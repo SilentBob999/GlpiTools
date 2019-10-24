@@ -63,8 +63,7 @@ function Get-GlpiToolsDropdownsSoftwareCategory {
 
         $ChoosenParam = ($PSCmdlet.MyInvocation.BoundParameters).Keys
 
-        $SoftwareCategoryObjectArray = @()
-
+        $SoftwareCategoryObjectArray = [System.Collections.Generic.List[PSObject]]::New()
     }
     
     process {
@@ -90,10 +89,10 @@ function Get-GlpiToolsDropdownsSoftwareCategory {
                         $SoftwareCategoryHash.Add($SoftwareCategoryProp.Name, $SoftwareCategoryProp.Value)
                     }
                     $object = [pscustomobject]$SoftwareCategoryHash
-                    $SoftwareCategoryObjectArray += $object 
+                    $SoftwareCategoryObjectArray.Add($object)
                 }
                 $SoftwareCategoryObjectArray
-                $SoftwareCategoryObjectArray = @()
+                $SoftwareCategoryObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
             SoftwareCategoryId {
                 foreach ( $SCId in $SoftwareCategoryId ) {
@@ -116,12 +115,12 @@ function Get-GlpiToolsDropdownsSoftwareCategory {
                             $SoftwareCategoryHash.Add($SoftwareCategoryProp.Name, $SoftwareCategoryProp.Value)
                         }
                         $object = [pscustomobject]$SoftwareCategoryHash
-                        $SoftwareCategoryObjectArray += $object
+                        $SoftwareCategoryObjectArray.Add($object)
                     } catch {
                         Write-Verbose -Message "Software Category ID = $SCId is not found"
                     }
                     $SoftwareCategoryObjectArray
-                    $SoftwareCategoryObjectArray = @()
+                    $SoftwareCategoryObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
             SoftwareCategoryName {

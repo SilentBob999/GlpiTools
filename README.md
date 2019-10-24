@@ -5,6 +5,11 @@
     <img src="https://img.shields.io/discord/235574673155293194.svg?style=flat&label=Discord&logo=discord"
       alt="Discord - Chat" title="Discord - Chat" />
   </a>&nbsp;&nbsp;&nbsp;&nbsp;
+  <!-- Slack -->
+  <a href="https://join.slack.com/t/powershell-poland/shared_invite/enQtNDYxNjYzNjYwMjcyLTFmZGU1N2IyODY3ZDI0ZmJjYjM3OTYwMjkwYjQ5ZTU1MzM1ZTIwYjRmOGFhM2M3MjE1Zjk4NDY4MDRjNTBlOWQ">
+    <img src="https://img.shields.io/badge/chat-on%20slack-orange.svg?style=flat&logo=slack"
+      alt="Slack - Chat" title="Slack - Chat" />
+  </a>&nbsp;&nbsp;&nbsp;&nbsp;
 </div>
 
 ## Abstract
@@ -36,60 +41,5 @@ Module works on Windows or Linux with PowerShell Core.
  ## Available commands
 
  ```
- Key                                          Value
- ---                                          -----
- Add-GlpiToolsItems                           Add-GlpiToolsItems
- Get-GlpiToolsActiveProfile                   Get-GlpiToolsActiveProfile
- Get-GlpiToolsAppsStructuresComponent         Get-GlpiToolsAppsStructuresComponent
- Get-GlpiToolsAppsStructuresComponentDb       Get-GlpiToolsAppsStructuresComponentDb
- Get-GlpiToolsAppsStructuresComponentInstance Get-GlpiToolsAppsStructuresComponentInstance
- Get-GlpiToolsAppsStructuresComponentLicense  Get-GlpiToolsAppsStructuresComponentLicense
- Get-GlpiToolsAppsStructuresComponentSla      Get-GlpiToolsAppsStructuresComponentSla
- Get-GlpiToolsAppsStructuresComponentState    Get-GlpiToolsAppsStructuresComponentState
- Get-GlpiToolsAppsStructuresComponentTarget   Get-GlpiToolsAppsStructuresComponentTarget
- Get-GlpiToolsAppsStructuresComponentTechnic  Get-GlpiToolsAppsStructuresComponentTechnic
- Get-GlpiToolsAppsStructuresComponentType     Get-GlpiToolsAppsStructuresComponentType
- Get-GlpiToolsAppsStructuresComponentUser     Get-GlpiToolsAppsStructuresComponentUser
- Get-GlpiToolsCartridgeItems                  Get-GlpiToolsCartridgeItems
- Get-GlpiToolsChanges                         Get-GlpiToolsChanges
- Get-GlpiToolsComputers                       Get-GlpiToolsComputers
- Get-GlpiToolsConfig                          Get-GlpiToolsConfig
- Get-GlpiToolsConsumableItems                 Get-GlpiToolsConsumableItems
- Get-GlpiToolsDocuments                       Get-GlpiToolsDocuments
- Get-GlpiToolsDropdownsComputerModels         Get-GlpiToolsDropdownsComputerModels
- Get-GlpiToolsDropdownsSoftwareCategory       Get-GlpiToolsDropdownsSoftwareCategory
- Get-GlpiToolsDropdownsStatusesOfItems        Get-GlpiToolsDropdownsStatusesOfItems
- Get-GlpiToolsDropdownsUpdateSources          Get-GlpiToolsDropdownsUpdateSources
- Get-GlpiToolsEnclosures                      Get-GlpiToolsEnclosures
- Get-GlpiToolsEntities                        Get-GlpiToolsEntities
- Get-GlpiToolsFusionInventoryAgents           Get-GlpiToolsFusionInventoryAgents
- Get-GlpiToolsGroups                          Get-GlpiToolsGroups
- Get-GlpiToolsItemLogs                        Get-GlpiToolsItemLogs
- Get-GlpiToolsListSearchOptions               Get-GlpiToolsListSearchOptions
- Get-GlpiToolsMonitors                        Get-GlpiToolsMonitors
- Get-GlpiToolsMyProfiles                      Get-GlpiToolsMyProfiles
- Get-GlpiToolsNetworkEquipments               Get-GlpiToolsNetworkEquipments
- Get-GlpiToolsPdus                            Get-GlpiToolsPdus
- Get-GlpiToolsPeripherals                     Get-GlpiToolsPeripherals
- Get-GlpiToolsPhones                          Get-GlpiToolsPhones
- Get-GlpiToolsPlugins                         Get-GlpiToolsPlugins
- Get-GlpiToolsPrinters                        Get-GlpiToolsPrinters
- Get-GlpiToolsProblems                        Get-GlpiToolsProblems
- Get-GlpiToolsProfiles                        Get-GlpiToolsProfiles
- Get-GlpiToolsRacks                           Get-GlpiToolsRacks
- Get-GlpiToolsRecurrentTickets                Get-GlpiToolsRecurrentTickets
- Get-GlpiToolsSoftware                        Get-GlpiToolsSoftware
- Get-GlpiToolsSystemConfig                    Get-GlpiToolsSystemConfig
- Get-GlpiToolsTickets                         Get-GlpiToolsTickets
- Get-GlpiToolsUsers                           Get-GlpiToolsUsers
- Remove-GlpiToolsItems                        Remove-GlpiToolsItems
- Search-GlpiToolsItems                        Search-GlpiToolsItems
- Set-GlpiToolsChangeActiveEntities            Set-GlpiToolsChangeActiveEntities
- Set-GlpiToolsChangeActiveProfile             Set-GlpiToolsChangeActiveProfile
- Set-GlpiToolsConfig                          Set-GlpiToolsConfig
- Set-GlpiToolsInitSession                     Set-GlpiToolsInitSession
- Set-GlpiToolsKillSession                     Set-GlpiToolsKillSession
- Set-GlpiToolsPasswordReset                   Set-GlpiToolsPasswordReset
- Set-GlpiToolsResetPasswordRequest            Set-GlpiToolsResetPasswordRequest
- Update-GlpiToolsItems                        Update-GlpiToolsItems
+ Get-Module GlpiTools | Select-Object -ExpandProperty ExportedCommands
  ```

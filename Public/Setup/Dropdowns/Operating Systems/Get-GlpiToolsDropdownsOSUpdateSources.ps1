@@ -12,22 +12,22 @@
 .PARAMETER UpdateSourcesName
     Provide to this param Update Sources Name from GLPI Update Sources Bookmark
 .EXAMPLE
-    PS C:\> Get-GlpiToolsDropdownsUpdateSources -All
+    PS C:\> Get-GlpiToolsDropdownsOSUpdateSources -All
     Example will return all Update Sources from Update Sources. 
 .EXAMPLE
-    PS C:\> 326 | Get-GlpiToolsDropdownsUpdateSources
+    PS C:\> 326 | Get-GlpiToolsDropdownsOSUpdateSources
     Function gets UpdateSourcesID from GLPI from Pipline, and return Update Sources object
 .EXAMPLE
-    PS C:\> 326, 321 | Get-GlpiToolsDropdownsUpdateSources
+    PS C:\> 326, 321 | Get-GlpiToolsDropdownsOSUpdateSources
     Function gets UpdateSourcesID from GLPI from Pipline (u can pass many ID's like that), and return Update Sources object
 .EXAMPLE
-    PS C:\> Get-GlpiToolsDropdownsUpdateSources -UpdateSourcesId 326
+    PS C:\> Get-GlpiToolsDropdownsOSUpdateSources -UpdateSourcesId 326
     Function gets UpdateSourcesID from GLPI which is provided through -UpdateSourcesId after Function type, and return Update Sources object
 .EXAMPLE 
-    PS C:\> Get-GlpiToolsDropdownsUpdateSources -UpdateSourcesId 326, 321
+    PS C:\> Get-GlpiToolsDropdownsOSUpdateSources -UpdateSourcesId 326, 321
     Function gets UpdateSourcesID from GLPI which is provided through -UpdateSourcesId keyword after Function type (u can provide many ID's like that), and return Update Sources object
 .EXAMPLE
-    PS C:\> Get-GlpiToolsDropdownsUpdateSources -UpdateSourcesName glpi
+    PS C:\> Get-GlpiToolsDropdownsOSUpdateSources -UpdateSourcesName glpi
     Example will return glpi Update Sources, but what is the most important, Update Sources will be shown exactly as you see in glpi Update Sources tab.
     If you want to add parameter, you have to modify "default items to show". This is the "key/tool" icon near search.
 .INPUTS
@@ -38,7 +38,7 @@
     PSP 03/2019
 #>
 
-function Get-GlpiToolsDropdownsUpdateSources {
+function Get-GlpiToolsDropdownsOSUpdateSources {
     [CmdletBinding()]
     param (
         [parameter(Mandatory = $false,
@@ -69,7 +69,7 @@ function Get-GlpiToolsDropdownsUpdateSources {
 
         $ChoosenParam = ($PSCmdlet.MyInvocation.BoundParameters).Keys
 
-        $UpdateSourcesArray = @()
+        $UpdateSourcesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
     
     process {
@@ -95,10 +95,10 @@ function Get-GlpiToolsDropdownsUpdateSources {
                         $UpdateSourcesHash.Add($UpdateSourcesProp.Name, $UpdateSourcesProp.Value)
                     }
                     $object = [pscustomobject]$UpdateSourcesHash
-                    $UpdateSourcesArray += $object 
+                    $UpdateSourcesArray.Add($object)
                 }
                 $UpdateSourcesArray
-                $UpdateSourcesArray = @()
+                $UpdateSourcesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
             UpdateSourcesId { 
                 foreach ( $USId in $UpdateSourcesId ) {
@@ -123,7 +123,7 @@ function Get-GlpiToolsDropdownsUpdateSources {
                             $UpdateSourcesHash.Add($UpdateSourcesProp.Name, $UpdateSourcesProp.Value)
                         }
                         $object = [pscustomobject]$UpdateSourcesHash
-                        $UpdateSourcesArray += $object 
+                        $UpdateSourcesArray.Add($object)
                 
                     } Catch {
 
@@ -131,7 +131,7 @@ function Get-GlpiToolsDropdownsUpdateSources {
                         
                     }
                     $UpdateSourcesArray
-                    $UpdateSourcesArray = @()
+                    $UpdateSourcesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
             UpdateSourcesName { 

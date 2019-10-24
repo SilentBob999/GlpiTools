@@ -29,7 +29,7 @@ function Get-GlpiToolsMyProfiles {
         $AppToken = Get-GlpiToolsConfig | Select-Object -ExpandProperty AppToken
         $PathToGlpi = Get-GlpiToolsConfig | Select-Object -ExpandProperty PathToGlpi
 
-        $ProfileArray = @()
+        $ProfileArray = [System.Collections.Generic.List[PSObject]]::New()
     }
     
     process {
@@ -53,10 +53,10 @@ function Get-GlpiToolsMyProfiles {
                         $ProfileHash.Add($ProfileProp.Name, $ProfileProp.Value)
                     }
                     $object = [pscustomobject]$ProfileHash
-                    $ProfileArray += $object 
+                    $ProfileArray.Add($object)
         }
         $ProfileArray
-        $ProfileArray = @()
+        $ProfileArray = [System.Collections.Generic.List[PSObject]]::New()
     }
     
     end {

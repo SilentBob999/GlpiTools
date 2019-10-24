@@ -90,7 +90,7 @@ function Get-GlpiToolsUsers {
 
         $ChoosenParam = ($PSCmdlet.MyInvocation.BoundParameters).Keys
 
-        $UserObjectArray = @()
+        $UserObjectArray = [System.Collections.Generic.List[PSObject]]::New()
     }
     process {
         switch ($ChoosenParam) {
@@ -115,10 +115,10 @@ function Get-GlpiToolsUsers {
                                 $UserHash.Add($UserProp.Name, $UserProp.Value)
                             }
                             $object = [pscustomobject]$UserHash
-                            $UserObjectArray += $object 
+                            $UserObjectArray.Add($object)
                 }
                 $UserObjectArray
-                $UserObjectArray = @()
+                $UserObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
             UserId {
                 foreach ( $UId in $UserId ) {
@@ -143,32 +143,19 @@ function Get-GlpiToolsUsers {
                                 $UserHash.Add($UserProp.Name, $UserProp.Value)
                             }
                             $object = [pscustomobject]$UserHash
-                            $UserObjectArray += $object 
+                            $UserObjectArray.Add($object)
                         } else {
                             $UserHash = [ordered]@{ }
                             $UserProperties = $GlpiUser.PSObject.Properties | Select-Object -Property Name, Value 
                                 
                             foreach ($UserProp in $UserProperties) {
 
-                                switch ($UserProp.Name) {
-                                    profiles_id { $UserPropNewValue = Get-GlpiToolsProfiles -All | Where-Object {$_.id -eq $UserProp.Value } | Select-Object -ExpandProperty name }
-                                    entities_id { $UserPropNewValue = $UserProp.Value | Get-GlpiToolsEntities | Select-Object -ExpandProperty CompleteName }
-                                    is_active {
-                                        if ($UserProp.Value -eq 0) {
-                                            $UserPropNewValue = "No"
-                                        } else {
-                                            $UserPropNewValue = "Yes"
-                                        }
-                                    }
-                                    Default {
-                                        $UserPropNewValue = $UserProp.Value
-                                    }
-                                }
+                                $UserPropNewValue = Get-GlpiToolsParameters -Parameter $UserProp.Name -Value $UserProp.Value
 
                                 $UserHash.Add($UserProp.Name, $UserPropNewValue)
                             }
                             $object = [pscustomobject]$UserHash
-                            $UserObjectArray += $object 
+                            $UserObjectArray.Add($object)
                         }
                     } Catch {
 
@@ -176,7 +163,7 @@ function Get-GlpiToolsUsers {
                         
                     }
                     $UserObjectArray
-                    $UserObjectArray = @()
+                    $UserObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
             UserName {

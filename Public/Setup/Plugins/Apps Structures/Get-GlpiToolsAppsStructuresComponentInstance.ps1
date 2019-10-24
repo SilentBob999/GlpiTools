@@ -67,7 +67,7 @@ function Get-GlpiToolsAppsStructuresComponentInstance {
 
         $ChoosenParam = ($PSCmdlet.MyInvocation.BoundParameters).Keys
 
-        $ComponentInstanceArray = @()
+        $ComponentInstanceArray = [System.Collections.Generic.List[PSObject]]::New()
     }
     
     process {
@@ -93,10 +93,10 @@ function Get-GlpiToolsAppsStructuresComponentInstance {
                         $ComponentInstanceHash.Add($ComponentInstanceProp.Name, $ComponentInstanceProp.Value)
                     }
                     $object = [pscustomobject]$ComponentInstanceHash
-                    $ComponentInstanceArray += $object 
+                    $ComponentInstanceArray.Add($object)
                 }
                 $ComponentInstanceArray
-                $ComponentInstanceArray = @()
+                $ComponentInstanceArray = [System.Collections.Generic.List[PSObject]]::New()
             }
             AppsStructureComponentInstanceId {
                 foreach ($ASCIid in $AppsStructureComponentInstanceId) {
@@ -121,10 +121,10 @@ function Get-GlpiToolsAppsStructuresComponentInstance {
                                 $ComponentInstanceHash.Add($ComponentInstanceProp.Name, $ComponentInstanceProp.Value)
                             }
                             $object = [pscustomobject]$ComponentInstanceHash
-                            $ComponentInstanceArray += $object 
+                            $ComponentInstanceArray.Add($object)
                         }
                         $ComponentInstanceArray
-                        $ComponentInstanceArray = @()
+                        $ComponentInstanceArray = [System.Collections.Generic.List[PSObject]]::New()
                     
                     }
                     catch {
