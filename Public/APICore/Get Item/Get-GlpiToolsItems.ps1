@@ -153,3 +153,10 @@ function Get-GlpiToolsItems{
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }
 }
+
+$ItemTypeValidate = {
+    param ($commandName, $parameterName, $stringMatch)
+    $ModulePath = Split-Path (Get-Module -Name GlpiTools).Path -Parent
+    (Get-Content "$($ModulePath)\Private\Parameters.json" | ConvertFrom-Json).GlpiComponents | Where-Object {$_ -match "$stringMatch"}
+}
+Register-ArgumentCompleter -CommandName Get-GlpiToolsItems -ParameterName ItemType -ScriptBlock $ItemTypeValidate
