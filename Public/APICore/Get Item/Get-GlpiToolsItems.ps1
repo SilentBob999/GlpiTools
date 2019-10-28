@@ -13,8 +13,9 @@
     By default it act as a '-like "*value*"'. Use ^ and $ to force an exact match. Eg. SearchText = @{"groups_id"="^10$" ; "type"="^2$"}
     This parameter can take pipeline input.
 .PARAMETER Raw
-    Parameter which you can use with ID?? Parameter.
-    ID?? has converted parameters from default, parameter Raw allows not convert this parameters.
+    Raw is always ON if the return contain more that one object.
+    If the return contain only one object and RAW is not use, parameters will be converted (expanded to show name instead of ID).
+    Use the parameter RAW to force to show ID in ALL cases.
 .PARAMETER OnlyId
     (default: false): keep only id keys in returned data. Optional.
 .PARAMETER SearchInTrash
@@ -61,7 +62,7 @@ function Get-GlpiToolsItems{
         [string]$ItemType,
 
         [parameter(Mandatory = $false,
-            ValueFromPipeline = $true,)]
+            ValueFromPipeline = $true)]
         [alias('Search')]
         [hashtable]$SearchText,
 
@@ -93,8 +94,8 @@ function Get-GlpiToolsItems{
 
         $GlpiObjectArray = [System.Collections.Generic.List[PSObject]]::New()
 
-        $IsDeletedString = "&is_deleted=$($SearchInTrash)"
-        $OnlyIdString = "&only_id=$($OnlyId)"
+        if ($SearchInTrash) { $IsDeletedString = "&is_deleted=true" }
+        if ($OnlyId) { $OnlyIdString = "&only_id=true" }
 
     }
 
@@ -116,9 +117,10 @@ function Get-GlpiToolsItems{
         }
 
         $GlpiObjectAll = Invoke-RestMethod @params -Verbose:$false
+        if (-not $Raw -and (@($GlpiObjectAll).count -gt 1)) {Write-Warning "RAW forced because more than 1 result"}
 
         foreach ($GlpiObject in $GlpiObjectAll) {
-            if ($Raw) {
+            if ($Raw -or (@($GlpiObjectAll).count -gt 1) ) {
                 $ObjectHash = [ordered]@{ }
                 $ObjectProperties = $GlpiObject.PSObject.Properties | Select-Object -Property Name, Value
 
@@ -126,7 +128,7 @@ function Get-GlpiToolsItems{
                     $ObjectHash.Add($ObjectProp.Name, $ObjectProp.Value)
                 }
                 $object = [pscustomobject]$ObjectHash
-                $ObjectObjectArray.Add($object)
+                $GlpiObjectArray.Add($object)
             } else {
                 $ObjectHash = [ordered]@{ }
                 $ObjectProperties = $GlpiObject.PSObject.Properties | Select-Object -Property Name, Value
@@ -138,7 +140,7 @@ function Get-GlpiToolsItems{
                     $ObjectHash.Add($ObjectProp.Name, $ObjectPropNewValue)
                 }
                 $object = [pscustomobject]$ObjectHash
-                $ObjectObjectArray.Add($object)
+                $GlpiObjectArray.Add($object)
             }
         }
 
