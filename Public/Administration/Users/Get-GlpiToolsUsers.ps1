@@ -18,7 +18,7 @@
     If you want Search for user name in trash, that parameter allow you to do it.
 .EXAMPLE
     PS C:\> Get-GlpiToolsUsers -All
-    Example will return all users from Users. 
+    Example will return all users from Users.
 .EXAMPLE
     PS C:\Users\Wojtek> 326 | Get-GlpiToolsUsers
     Function gets UserID from GLPI from Pipline, and return User object
@@ -28,7 +28,7 @@
 .EXAMPLE
     PS C:\Users\Wojtek> Get-GlpiToolsUsers -UserId 326
     Function gets UserID from GLPI which is provided through -UserId after Function type, and return User object
-.EXAMPLE 
+.EXAMPLE
     PS C:\Users\Wojtek> Get-GlpiToolsUsers -UserId 326, 321
     Function gets UserID from GLPI which is provided through -UserId keyword after Function type (u can provide many ID's like that), and return User object
 .EXAMPLE
@@ -64,6 +64,9 @@ function Get-GlpiToolsUsers {
             ParameterSetName = "UserId")]
         [alias('UID')]
         [string[]]$UserId,
+
+        [parameter(Mandatory = $false,
+           ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "UserId")]
         [switch]$Raw,
@@ -76,7 +79,13 @@ function Get-GlpiToolsUsers {
             ParameterSetName = "UserName")]
         [alias('SIT')]
         [ValidateSet("Yes", "No")]
-        [string]$SearchInTrash = "No"
+        [string]$SearchInTrash = "No",
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
+
     )
     begin {
 
@@ -104,13 +113,13 @@ function Get-GlpiToolsUsers {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/User/?range=0-9999999999999"
                 }
-                
+
                 $GlpiUsersAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiUser in $GlpiUsersAll) {
                     $UserHash = [ordered]@{ }
-                            $UserProperties = $GlpiUser.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $UserProperties = $GlpiUser.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($UserProp in $UserProperties) {
                                 $UserHash.Add($UserProp.Name, $UserProp.Value)
                             }
@@ -137,8 +146,8 @@ function Get-GlpiToolsUsers {
 
                         if ($Raw) {
                             $UserHash = [ordered]@{ }
-                            $UserProperties = $GlpiUser.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $UserProperties = $GlpiUser.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($UserProp in $UserProperties) {
                                 $UserHash.Add($UserProp.Name, $UserProp.Value)
                             }
@@ -146,8 +155,8 @@ function Get-GlpiToolsUsers {
                             $UserObjectArray.Add($object)
                         } else {
                             $UserHash = [ordered]@{ }
-                            $UserProperties = $GlpiUser.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $UserProperties = $GlpiUser.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($UserProp in $UserProperties) {
 
                                 $UserPropNewValue = Get-GlpiToolsParameters -Parameter $UserProp.Name -Value $UserProp.Value
@@ -160,7 +169,7 @@ function Get-GlpiToolsUsers {
                     } Catch {
 
                         Write-Verbose -Message "User ID = $UId is not found"
-                        
+
                     }
                     $UserObjectArray
                     $UserObjectArray = [System.Collections.Generic.List[PSObject]]::New()
@@ -168,6 +177,9 @@ function Get-GlpiToolsUsers {
             }
             UserName {
                 Search-GlpiToolsItems -SearchFor User -SearchType contains -SearchValue $UserName -SearchInTrash $SearchInTrash
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "User" -SearchText $SearchText -raw $Raw
             }
             Default {}
         }

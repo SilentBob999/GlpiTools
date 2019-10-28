@@ -18,7 +18,7 @@
     Parameter which you can use with PhoneName Parameter.
     If you want Search for Phone name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with PhoneId Parameter. 
+    Parameter which you can use with PhoneId Parameter.
     If you want to get additional parameter of Phone object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsPhones
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsPhones -PhoneId 326
     Function gets PhoneID from GLPI which is provided through -PhoneId after Function type, and return Phone object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsPhones -PhoneId 326, 321
     Function gets PhoneID from GLPI which is provided through -PhoneId keyword after Function type (u can provide many ID's like that), and return Phone object
 .EXAMPLE
@@ -65,6 +65,9 @@ function Get-GlpiToolsPhones {
             ParameterSetName = "PhoneId")]
         [alias('PID')]
         [string[]]$PhoneId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "PhoneId")]
         [switch]$Raw,
@@ -98,9 +101,14 @@ function Get-GlpiToolsPhones {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter
+        [string]$Parameter,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
 
         $AppToken = $Script:AppToken
@@ -127,19 +135,19 @@ function Get-GlpiToolsPhones {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithTickets { $ParamValue = "?with_tickets=true" } 
+            WithTickets { $ParamValue = "?with_tickets=true" }
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" } 
+            WithNotes { $ParamValue = "?with_notes=true" }
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -149,13 +157,13 @@ function Get-GlpiToolsPhones {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Phone/?range=0-9999999999999"
                 }
-                
+
                 $GlpiPhoneAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiPhone in $GlpiPhoneAll) {
                     $PhoneHash = [ordered]@{ }
-                            $PhoneProperties = $GlpiPhone.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PhoneProperties = $GlpiPhone.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PhoneProp in $PhoneProperties) {
                                 $PhoneHash.Add($PhoneProp.Name, $PhoneProp.Value)
                             }
@@ -165,7 +173,7 @@ function Get-GlpiToolsPhones {
                 $PhoneObjectArray
                 $PhoneObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            PhoneId { 
+            PhoneId {
                 foreach ( $PId in $PhoneId ) {
                     $params = @{
                         headers = @{
@@ -182,8 +190,8 @@ function Get-GlpiToolsPhones {
 
                         if ($Raw) {
                             $PhoneHash = [ordered]@{ }
-                            $PhoneProperties = $GlpiPhone.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PhoneProperties = $GlpiPhone.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PhoneProp in $PhoneProperties) {
                                 $PhoneHash.Add($PhoneProp.Name, $PhoneProp.Value)
                             }
@@ -191,8 +199,8 @@ function Get-GlpiToolsPhones {
                             $PhoneObjectArray.Add($object)
                         } else {
                             $PhoneHash = [ordered]@{ }
-                            $PhoneProperties = $GlpiPhone.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PhoneProperties = $GlpiPhone.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PhoneProp in $PhoneProperties) {
 
                                 switch ($PhoneProp.Name) {
@@ -202,7 +210,7 @@ function Get-GlpiToolsPhones {
                                         $PhonePropNewValue = $PhoneProp.Value
                                     }
                                 }
-                                
+
                                 $PhoneHash.Add($PhoneProp.Name, $PhonePropNewValue)
                             }
                             $object = [pscustomobject]$PhoneHash
@@ -211,21 +219,24 @@ function Get-GlpiToolsPhones {
                     } Catch {
 
                         Write-Verbose -Message "Phone ID = $PId is not found"
-                        
+
                     }
                     $PhoneObjectArray
                     $PhoneObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            PhoneName { 
+            PhoneName {
                 Search-GlpiToolsItems -SearchFor Phone -SearchType contains -SearchValue $PhoneName -SearchInTrash $SearchInTrash
             }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Phone" -SearchText $SearchText -raw $Raw
+            }
             Default {
-                
+
             }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

@@ -18,7 +18,7 @@
     Parameter which you can use with ComputerName Parameter.
     If you want Search for computer name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with ComputerId Parameter. 
+    Parameter which you can use with ComputerId Parameter.
     If you want to get additional parameter of computer object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsComputers
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsComputers -ComputerId 326
     Function gets ComputerID from GLPI which is provided through -ComputerId after Function type, and return Computer object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsComputers -ComputerId 326, 321
     Function gets ComputerID from GLPI which is provided through -ComputerId keyword after Function type (u can provide many ID's like that), and return Computer object
 .EXAMPLE
@@ -66,6 +66,9 @@ function Get-GlpiToolsComputers {
             ParameterSetName = "ComputerId")]
         [alias('CID')]
         [string[]]$ComputerId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ComputerId")]
         [switch]$Raw,
@@ -99,9 +102,15 @@ function Get-GlpiToolsComputers {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter
+        [string]$Parameter,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
+
     )
-    
+
     begin {
 
         $AppToken = $Script:AppToken
@@ -128,20 +137,20 @@ function Get-GlpiToolsComputers {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithTickets { $ParamValue = "?with_tickets=true" } 
+            WithTickets { $ParamValue = "?with_tickets=true" }
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" } 
+            WithNotes { $ParamValue = "?with_notes=true" }
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-    
+
     process {
         switch ($ChoosenParam) {
             All {
-                
+
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -151,24 +160,24 @@ function Get-GlpiToolsComputers {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Computer/?range=0-9999999999999"
                 }
-                
+
                 $GlpiComputerAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiComputer in $GlpiComputerAll) {
                     $ComputerHash = [ordered]@{ }
-                            $ComputerProperties = $GlpiComputer.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ComputerProperties = $GlpiComputer.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ComputerProp in $ComputerProperties) {
                                 $ComputerHash.Add($ComputerProp.Name, $ComputerProp.Value)
                             }
                             $object = [pscustomobject]$ComputerHash
-                            $ComputerObjectArray.Add($object) 
+                            $ComputerObjectArray.Add($object)
                 }
                 $ComputerObjectArray
                 $ComputerObjectArray = [System.Collections.Generic.List[PSObject]]::New()
-                
+
             }
-            ComputerId { 
+            ComputerId {
                 foreach ( $CId in $ComputerId ) {
                     $params = @{
                         headers = @{
@@ -185,8 +194,8 @@ function Get-GlpiToolsComputers {
 
                         if ($Raw) {
                             $ComputerHash = [ordered]@{ }
-                            $ComputerProperties = $GlpiComputer.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ComputerProperties = $GlpiComputer.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ComputerProp in $ComputerProperties) {
                                 $ComputerHash.Add($ComputerProp.Name, $ComputerProp.Value)
                             }
@@ -194,10 +203,10 @@ function Get-GlpiToolsComputers {
                             $ComputerObjectArray.Add($object)
                         } else {
                             $ComputerHash = [ordered]@{ }
-                            $ComputerProperties = $GlpiComputer.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ComputerProperties = $GlpiComputer.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ComputerProp in $ComputerProperties) {
-                                
+
                                 $ComputerPropNewValue = Get-GlpiToolsParameters -Parameter $ComputerProp.Name -Value $ComputerProp.Value
 
                                 $ComputerHash.Add($ComputerProp.Name, $ComputerPropNewValue)
@@ -208,21 +217,24 @@ function Get-GlpiToolsComputers {
                     } Catch {
 
                         Write-Verbose -Message "Computer ID = $CId is not found"
-                        
+
                     }
                     $ComputerObjectArray
                     $ComputerObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ComputerName { 
+            ComputerName {
                 Search-GlpiToolsItems -SearchFor Computer -SearchType contains -SearchValue $ComputerName -SearchInTrash $SearchInTrash
             }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Computer" -SearchText $SearchText -raw $Raw
+            }
             Default {
-                
+
             }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

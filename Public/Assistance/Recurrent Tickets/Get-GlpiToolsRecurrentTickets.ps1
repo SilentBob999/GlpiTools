@@ -18,7 +18,7 @@
     Parameter which you can use with RecurrentTicketName Parameter.
     If you want Search for RecurrentTicket name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with RecurrentTicketId Parameter. 
+    Parameter which you can use with RecurrentTicketId Parameter.
     If you want to get additional parameter of RecurrentTicket object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsRecurrentTickets
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsRecurrentTickets -RecurrentTicketId 326
     Function gets RecurrentTicketID from GLPI which is provided through -RecurrentTicketId after Function type, and return RecurrentTicket object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsRecurrentTickets -RecurrentTicketId 326, 321
     Function gets RecurrentTicketID from GLPI which is provided through -RecurrentTicketId keyword after Function type (u can provide many ID's like that), and return RecurrentTicket object
 .EXAMPLE
@@ -65,6 +65,9 @@ function Get-GlpiToolsRecurrentTickets {
             ParameterSetName = "RecurrentTicketId")]
         [alias('RTID')]
         [string[]]$RecurrentTicketId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "RecurrentTicketId")]
         [switch]$Raw,
@@ -94,9 +97,14 @@ function Get-GlpiToolsRecurrentTickets {
             "WithRecurrentTickets",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter
+        [string]$Parameter,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
 
         $AppToken = $Script:AppToken
@@ -119,19 +127,19 @@ function Get-GlpiToolsRecurrentTickets {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithRecurrentTickets { $ParamValue = "?with_RecurrentTickets=true" } 
             WithRecurrentTickets { $ParamValue = "?with_RecurrentTickets=true" }
             WithRecurrentTickets { $ParamValue = "?with_RecurrentTickets=true" }
-            WithNotes { $ParamValue = "?with_notes=true" } 
+            WithRecurrentTickets { $ParamValue = "?with_RecurrentTickets=true" }
+            WithNotes { $ParamValue = "?with_notes=true" }
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -141,13 +149,13 @@ function Get-GlpiToolsRecurrentTickets {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/ticketrecurrent/?range=0-9999999999999"
                 }
-                
+
                 $GlpiRecurrentTicketAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiRecurrentTicket in $GlpiRecurrentTicketAll) {
                     $RecurrentTicketHash = [ordered]@{ }
-                            $RecurrentTicketProperties = $GlpiRecurrentTicket.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $RecurrentTicketProperties = $GlpiRecurrentTicket.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($RecurrentTicketProp in $RecurrentTicketProperties) {
                                 $RecurrentTicketHash.Add($RecurrentTicketProp.Name, $RecurrentTicketProp.Value)
                             }
@@ -157,7 +165,7 @@ function Get-GlpiToolsRecurrentTickets {
                 $RecurrentTicketObjectArray
                 $RecurrentTicketObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            RecurrentTicketId { 
+            RecurrentTicketId {
                 foreach ( $RTId in $RecurrentTicketId ) {
                     $params = @{
                         headers = @{
@@ -174,8 +182,8 @@ function Get-GlpiToolsRecurrentTickets {
 
                         if ($Raw) {
                             $RecurrentTicketHash = [ordered]@{ }
-                            $RecurrentTicketProperties = $GlpiRecurrentTicket.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $RecurrentTicketProperties = $GlpiRecurrentTicket.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($RecurrentTicketProp in $RecurrentTicketProperties) {
                                 $RecurrentTicketHash.Add($RecurrentTicketProp.Name, $RecurrentTicketProp.Value)
                             }
@@ -183,8 +191,8 @@ function Get-GlpiToolsRecurrentTickets {
                             $RecurrentTicketObjectArray.Add($object)
                         } else {
                             $RecurrentTicketHash = [ordered]@{ }
-                            $RecurrentTicketProperties = $GlpiRecurrentTicket.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $RecurrentTicketProperties = $GlpiRecurrentTicket.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($RecurrentTicketProp in $RecurrentTicketProperties) {
 
                                 switch ($RecurrentTicketProp.Name) {
@@ -193,7 +201,7 @@ function Get-GlpiToolsRecurrentTickets {
                                         $RecurrentTicketPropNewValue = $RecurrentTicketProp.Value
                                     }
                                 }
-                                
+
                                 $RecurrentTicketHash.Add($RecurrentTicketProp.Name, $RecurrentTicketPropNewValue)
                             }
                             $object = [pscustomobject]$RecurrentTicketHash
@@ -202,21 +210,24 @@ function Get-GlpiToolsRecurrentTickets {
                     } Catch {
 
                         Write-Verbose -Message "RecurrentTicket ID = $RTId is not found"
-                        
+
                     }
                     $RecurrentTicketObjectArray
                     $RecurrentTicketObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            RecurrentTicketName { 
+            RecurrentTicketName {
                 Search-GlpiToolsItems -SearchFor ticketrecurrent -SearchType contains -SearchValue $RecurrentTicketName -SearchInTrash $SearchInTrash
             }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "ticketrecurrent" -SearchText $SearchText -raw $Raw
+            }
             Default {
-                
+
             }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

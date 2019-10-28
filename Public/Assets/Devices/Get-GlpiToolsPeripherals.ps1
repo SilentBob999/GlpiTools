@@ -18,7 +18,7 @@
     Parameter which you can use with PeripheralName Parameter.
     If you want Search for Peripheral name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with PeripheralId Parameter. 
+    Parameter which you can use with PeripheralId Parameter.
     If you want to get additional parameter of Peripheral object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsPeripherals
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsPeripherals -PeripheralId 326
     Function gets PeripheralID from GLPI which is provided through -PeripheralId after Function type, and return Peripheral object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsPeripherals -PeripheralId 326, 321
     Function gets PeripheralID from GLPI which is provided through -PeripheralId keyword after Function type (u can provide many ID's like that), and return Peripheral object
 .EXAMPLE
@@ -65,6 +65,9 @@ function Get-GlpiToolsPeripherals {
             ParameterSetName = "PeripheralId")]
         [alias('PID')]
         [string[]]$PeripheralId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "PeripheralId")]
         [switch]$Raw,
@@ -98,9 +101,14 @@ function Get-GlpiToolsPeripherals {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter
+        [string]$Parameter,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
 
         $AppToken = $Script:AppToken
@@ -127,19 +135,19 @@ function Get-GlpiToolsPeripherals {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithTickets { $ParamValue = "?with_tickets=true" } 
+            WithTickets { $ParamValue = "?with_tickets=true" }
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" } 
+            WithNotes { $ParamValue = "?with_notes=true" }
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -149,13 +157,13 @@ function Get-GlpiToolsPeripherals {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Peripheral/?range=0-9999999999999"
                 }
-                
+
                 $GlpiPeripheralAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiPeripheral in $GlpiPeripheralAll) {
                     $PeripheralHash = [ordered]@{ }
-                            $PeripheralProperties = $GlpiPeripheral.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PeripheralProperties = $GlpiPeripheral.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PeripheralProp in $PeripheralProperties) {
                                 $PeripheralHash.Add($PeripheralProp.Name, $PeripheralProp.Value)
                             }
@@ -165,7 +173,7 @@ function Get-GlpiToolsPeripherals {
                 $PeripheralObjectArray
                 $PeripheralObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            PeripheralId { 
+            PeripheralId {
                 foreach ( $PId in $PeripheralId ) {
                     $params = @{
                         headers = @{
@@ -182,8 +190,8 @@ function Get-GlpiToolsPeripherals {
 
                         if ($Raw) {
                             $PeripheralHash = [ordered]@{ }
-                            $PeripheralProperties = $GlpiPeripheral.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PeripheralProperties = $GlpiPeripheral.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PeripheralProp in $PeripheralProperties) {
                                 $PeripheralHash.Add($PeripheralProp.Name, $PeripheralProp.Value)
                             }
@@ -191,8 +199,8 @@ function Get-GlpiToolsPeripherals {
                             $PeripheralObjectArray.Add($object)
                         } else {
                             $PeripheralHash = [ordered]@{ }
-                            $PeripheralProperties = $GlpiPeripheral.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PeripheralProperties = $GlpiPeripheral.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PeripheralProp in $PeripheralProperties) {
 
                                 switch ($PeripheralProp.Name) {
@@ -202,7 +210,7 @@ function Get-GlpiToolsPeripherals {
                                         $PeripheralPropNewValue = $PeripheralProp.Value
                                     }
                                 }
-                                
+
                                 $PeripheralHash.Add($PeripheralProp.Name, $PeripheralPropNewValue)
                             }
                             $object = [pscustomobject]$PeripheralHash
@@ -211,21 +219,24 @@ function Get-GlpiToolsPeripherals {
                     } Catch {
 
                         Write-Verbose -Message "Peripheral ID = $PId is not found"
-                        
+
                     }
                     $PeripheralObjectArray
                     $PeripheralObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            PeripheralName { 
+            PeripheralName {
                 Search-GlpiToolsItems -SearchFor Peripheral -SearchType contains -SearchValue $PeripheralName -SearchInTrash $SearchInTrash
             }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Peripheral" -SearchText $SearchText -raw $Raw
+            }
             Default {
-                
+
             }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

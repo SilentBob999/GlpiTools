@@ -14,13 +14,13 @@
     DocumentId has converted parameters from default, parameter Raw allows not convert this parameters.
 .PARAMETER RawDocument
     Parameter which you can use with DocumentId Parameter.
-    This parameter get document and return what document has inside. 
+    This parameter get document and return what document has inside.
 .EXAMPLE
     PS C:\> Get-GlpiToolsDocuments -All
     Example will show all documents from Document GLPI Bookmark.
 .EXAMPLE
     PS C:\> Get-GlpiToolsDocuments -ComputerId 2
-    Example will return object of document which id is 2. Example will convert values to human readable. 
+    Example will return object of document which id is 2. Example will convert values to human readable.
 .EXAMPLE
     PS C:\> Get-GlpiToolsDocuments -ComputerId 2 -Raw
     Example will return object of document which id is 2. Example will not convert values to human readable.
@@ -51,15 +51,22 @@ function Get-GlpiToolsDocuments {
         [int[]]$DocumentId,
 
         [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
+        [parameter(Mandatory = $false,
             ParameterSetName = "Raw",
             Position = 1)]
         [switch]$Raw,
         [parameter(Mandatory = $false,
             ParameterSetName = "RawDocument",
             Position = 1)]
-        [switch]$RawDocument
+        [switch]$RawDocument,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
@@ -74,10 +81,10 @@ function Get-GlpiToolsDocuments {
         $DocumentObjectArray = [System.Collections.Generic.List[PSObject]]::New()
 
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -87,13 +94,13 @@ function Get-GlpiToolsDocuments {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Document/?range=0-9999999999999"
                 }
-                
+
                 $GlpiDocumentAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiDocument in $GlpiDocumentAll) {
                     $DocumentHash = [ordered]@{ }
-                    $DocumentProperties = $GlpiDocument.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DocumentProperties = $GlpiDocument.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DocumentProp in $DocumentProperties) {
                         $DocumentHash.Add($DocumentProp.Name, $DocumentProp.Value)
                     }
@@ -123,7 +130,7 @@ function Get-GlpiToolsDocuments {
 
                             $GlpiDocument
                         } catch {
-                            Write-Verbose -Message "Computer ID = $DId is not found"
+                            Write-Verbose -Message "Document ID = $DId is not found"
                         }
                     } elseif ($Raw) {
 
@@ -141,18 +148,18 @@ function Get-GlpiToolsDocuments {
                             $GlpiDocument = Invoke-RestMethod @params
 
                             $DocumentHash = [ordered]@{ }
-                            $DocumentProperties = $GlpiDocument.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DocumentProperties = $GlpiDocument.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DocumentProp in $DocumentProperties) {
                                 $DocumentHash.Add($DocumentProp.Name, $DocumentProp.Value)
                             }
                             $object = [pscustomobject]$DocumentHash
                             $DocumentObjectArray.Add($object)
-                            
+
                             $DocumentObjectArray
                             $DocumentObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                         } catch {
-                            Write-Verbose -Message "Computer ID = $DId is not found"
+                            Write-Verbose -Message "Document ID = $DId is not found"
                         }
                     } else {
 
@@ -170,8 +177,8 @@ function Get-GlpiToolsDocuments {
                             $GlpiDocument = Invoke-RestMethod @params
 
                             $DocumentHash = [ordered]@{ }
-                            $DocumentProperties = $GlpiDocument.PSObject.Properties | Select-Object -Property Name, Value 
-                            
+                            $DocumentProperties = $GlpiDocument.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DocumentProp in $DocumentProperties) {
 
                                 switch ($DocumentProp.Name) {
@@ -181,7 +188,7 @@ function Get-GlpiToolsDocuments {
                                         $DocumentPropNewValue = $DocumentProp.Value
                                     }
                                 }
-                            
+
                                 $DocumentHash.Add($DocumentProp.Name, $DocumentPropNewValue)
                             }
                             $object = [pscustomobject]$DocumentHash
@@ -189,17 +196,20 @@ function Get-GlpiToolsDocuments {
 
                             $DocumentObjectArray
                             $DocumentObjectArray = [System.Collections.Generic.List[PSObject]]::New()
-                        
+
                         } catch {
-                            Write-Verbose -Message "Computer ID = $DId is not found"
-                        } 
+                            Write-Verbose -Message "Document ID = $DId is not found"
+                        }
                     }
                 }
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Document" -SearchText $SearchText -raw $Raw
             }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

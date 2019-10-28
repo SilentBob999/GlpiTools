@@ -21,7 +21,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsSoftwareVersions -SoftwareVersionId 326
     Function gets SoftwareVersionID from GLPI which is provided through -SoftwareVersionId after Function type, and return Software Version object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsSoftwareVersions -SoftwareVersionId 326, 321
     Function gets SoftwareVersionID from GLPI which is provided through -SoftwareVersionId keyword after Function type (u can provide many ID's like that), and return Software Version object
 .EXAMPLE
@@ -51,11 +51,20 @@ function Get-GlpiToolsSoftwareVersions {
             ParameterSetName = "SoftwareVersionId")]
         [alias('SVID')]
         [string[]]$SoftwareVersionId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "SoftwareVersionId")]
-        [switch]$Raw
+        [switch]$Raw,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
+
     )
-    
+
     begin {
 
         $AppToken = $Script:AppToken
@@ -71,11 +80,11 @@ function Get-GlpiToolsSoftwareVersions {
         $SoftwareVersionObjectArray = [System.Collections.Generic.List[PSObject]]::New()
 
     }
-    
+
     process {
         switch ($ChoosenParam) {
             All {
-                
+
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -85,13 +94,13 @@ function Get-GlpiToolsSoftwareVersions {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/SoftwareVersion/?range=0-9999999999999"
                 }
-                
+
                 $GlpiSoftwareVersionAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiSoftwareVersion in $GlpiSoftwareVersionAll) {
                     $SoftwareVersionHash = [ordered]@{ }
-                            $SoftwareVersionProperties = $GlpiSoftwareVersion.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $SoftwareVersionProperties = $GlpiSoftwareVersion.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($SoftwareVersionProp in $SoftwareVersionProperties) {
                                 $SoftwareVersionHash.Add($SoftwareVersionProp.Name, $SoftwareVersionProp.Value)
                             }
@@ -100,9 +109,9 @@ function Get-GlpiToolsSoftwareVersions {
                 }
                 $SoftwareVersionObjectArray
                 $SoftwareVersionObjectArray = [System.Collections.Generic.List[PSObject]]::New()
-                
+
             }
-            SoftwareVersionId { 
+            SoftwareVersionId {
                 foreach ( $SVid in $SoftwareVersionId ) {
                     $params = @{
                         headers = @{
@@ -119,8 +128,8 @@ function Get-GlpiToolsSoftwareVersions {
 
                         if ($Raw) {
                             $SoftwareVersionHash = [ordered]@{ }
-                            $SoftwareVersionProperties = $GlpiSoftwareVersion.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $SoftwareVersionProperties = $GlpiSoftwareVersion.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($SoftwareVersionProp in $SoftwareVersionProperties) {
                                 $SoftwareVersionHash.Add($SoftwareVersionProp.Name, $SoftwareVersionProp.Value)
                             }
@@ -128,10 +137,10 @@ function Get-GlpiToolsSoftwareVersions {
                             $SoftwareVersionObjectArray.Add($object)
                         } else {
                             $SoftwareVersionHash = [ordered]@{ }
-                            $SoftwareVersionProperties = $GlpiSoftwareVersion.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $SoftwareVersionProperties = $GlpiSoftwareVersion.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($SoftwareVersionProp in $SoftwareVersionProperties) {
-                                
+
                                 $SoftwareVersionPropNewValue = Get-GlpiToolsParameters -Parameter $SoftwareVersionProp.Name -Value $SoftwareVersionProp.Value
 
                                 $SoftwareVersionHash.Add($SoftwareVersionProp.Name, $SoftwareVersionPropNewValue)
@@ -142,18 +151,21 @@ function Get-GlpiToolsSoftwareVersions {
                     } Catch {
 
                         Write-Verbose -Message "Software Version ID = $SVId is not found"
-                        
+
                     }
                     $SoftwareVersionObjectArray
                     $SoftwareVersionObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "SoftwareVersion" -SearchText $SearchText -raw $Raw
+            }
             Default {
-                
+
             }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

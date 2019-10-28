@@ -17,7 +17,7 @@
     Provide to this param Group Name from GLPI Group Bookmark
 .EXAMPLE
     PS C:\> Get-GlpiToolsGroups -All
-    Example will return all Groups from Groups. 
+    Example will return all Groups from Groups.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsGroups
     Function gets GroupID from GLPI from Pipline, and return Group object
@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsGroups -GroupId 326
     Function gets GroupID from GLPI which is provided through -GroupId after Function type, and return Group object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsGroups -GroupId 326, 321
     Function gets GroupID from GLPI which is provided through -GroupId keyword after Function type (u can provide many ID's like that), and return Group object
 .EXAMPLE
@@ -60,6 +60,9 @@ function Get-GlpiToolsGroups {
             ParameterSetName = "GroupId")]
         [alias('GID')]
         [string[]]$GroupId,
+
+        [parameter(Mandatory = $false,
+	        ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "GroupId")]
         [switch]$Raw,
@@ -67,9 +70,15 @@ function Get-GlpiToolsGroups {
         [parameter(Mandatory = $true,
             ParameterSetName = "GroupName")]
         [alias('GN')]
-        [string]$GroupName
+        [string]$GroupName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
+
     )
-    
+
     begin {
 
         $AppToken = $Script:AppToken
@@ -85,10 +94,10 @@ function Get-GlpiToolsGroups {
         $GroupObjectArray = [System.Collections.Generic.List[PSObject]]::New()
 
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -98,13 +107,13 @@ function Get-GlpiToolsGroups {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Group/?range=0-9999999999999"
                 }
-                
+
                 $GlpiGroupsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiGroup in $GlpiGroupsAll) {
                     $GroupHash = [ordered]@{ }
-                            $GroupProperties = $GlpiGroup.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $GroupProperties = $GlpiGroup.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($GroupProp in $GroupProperties) {
                                 $GroupHash.Add($GroupProp.Name, $GroupProp.Value)
                             }
@@ -114,7 +123,7 @@ function Get-GlpiToolsGroups {
                 $GroupObjectArray
                 $GroupObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            GroupId { 
+            GroupId {
                 foreach ( $GId in $GroupId ) {
                     $params = @{
                         headers = @{
@@ -131,8 +140,8 @@ function Get-GlpiToolsGroups {
 
                         if ($Raw) {
                             $GroupHash = [ordered]@{ }
-                            $GroupProperties = $GlpiGroup.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $GroupProperties = $GlpiGroup.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($GroupProp in $GroupProperties) {
                                 $GroupHash.Add($GroupProp.Name, $GroupProp.Value)
                             }
@@ -140,8 +149,8 @@ function Get-GlpiToolsGroups {
                             $GroupObjectArray.Add($object)
                         } else {
                             $GroupHash = [ordered]@{ }
-                            $GroupProperties = $GlpiGroup.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $GroupProperties = $GlpiGroup.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($GroupProp in $GroupProperties) {
 
                                 switch ($GroupProp.Name) {
@@ -159,21 +168,24 @@ function Get-GlpiToolsGroups {
                     } Catch {
 
                         Write-Verbose -Message "Group ID = $GId is not found"
-                        
+
                     }
                     $GroupObjectArray
                     $GroupObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            GroupName { 
-                Search-GlpiToolsItems -SearchFor Group -SearchType contains -SearchValue $GroupName 
+            GroupName {
+                Search-GlpiToolsItems -SearchFor Group -SearchType contains -SearchValue $GroupName
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Group" -SearchText $SearchText -raw $Raw
             }
             Default {
-                
+
             }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

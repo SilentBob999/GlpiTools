@@ -21,7 +21,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsComputerSoftwareVersions -ComputerSoftwareVersionId 326
     Function gets ComputerSoftwareVersionId from GLPI which is provided through -ComputerSoftwareVersionId after Function type, and return Computer Software Version object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsComputerSoftwareVersions -ComputerSoftwareVersionId 326, 321
     Function gets ComputerSoftwareVersionId from GLPI which is provided through -ComputerSoftwareVersionId keyword after Function type (u can provide many ID's like that), and return Computer Software Version object
 .EXAMPLE
@@ -51,11 +51,19 @@ function Get-GlpiToolsComputerSoftwareVersions {
             ParameterSetName = "ComputerSoftwareVersionId")]
         [alias('CSVID')]
         [string[]]$ComputerSoftwareVersionId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ComputerSoftwareVersionId")]
-        [switch]$Raw
+        [switch]$Raw,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
 
         $AppToken = $Script:AppToken
@@ -71,11 +79,11 @@ function Get-GlpiToolsComputerSoftwareVersions {
         $ComputerSoftwareVersionObjectArray = [System.Collections.Generic.List[PSObject]]::New()
 
     }
-    
+
     process {
         switch ($ChoosenParam) {
             All {
-                
+
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -85,13 +93,13 @@ function Get-GlpiToolsComputerSoftwareVersions {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Computer_SoftwareVersion/?range=0-9999999999999"
                 }
-                
+
                 $GlpiComputerSoftwareVersionAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiComputerSoftwareVersion in $GlpiComputerSoftwareVersionAll) {
                     $ComputerSoftwareVersionHash = [ordered]@{ }
-                            $ComputerSoftwareVersionProperties = $GlpiComputerSoftwareVersion.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ComputerSoftwareVersionProperties = $GlpiComputerSoftwareVersion.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ComputerSoftwareVersionProp in $ComputerSoftwareVersionProperties) {
                                 $ComputerSoftwareVersionHash.Add($ComputerSoftwareVersionProp.Name, $ComputerSoftwareVersionProp.Value)
                             }
@@ -100,9 +108,9 @@ function Get-GlpiToolsComputerSoftwareVersions {
                 }
                 $ComputerSoftwareVersionObjectArray
                 $ComputerSoftwareVersionObjectArray = [System.Collections.Generic.List[PSObject]]::New()
-                
+
             }
-            ComputerSoftwareVersionId { 
+            ComputerSoftwareVersionId {
                 foreach ( $CSVid in $ComputerSoftwareVersionId ) {
                     $params = @{
                         headers = @{
@@ -119,8 +127,8 @@ function Get-GlpiToolsComputerSoftwareVersions {
 
                         if ($Raw) {
                             $ComputerSoftwareVersionHash = [ordered]@{ }
-                            $ComputerSoftwareVersionProperties = $GlpiComputerSoftwareVersion.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ComputerSoftwareVersionProperties = $GlpiComputerSoftwareVersion.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ComputerSoftwareVersionProp in $ComputerSoftwareVersionProperties) {
                                 $ComputerSoftwareVersionHash.Add($ComputerSoftwareVersionProp.Name, $ComputerSoftwareVersionProp.Value)
                             }
@@ -128,10 +136,10 @@ function Get-GlpiToolsComputerSoftwareVersions {
                             $ComputerSoftwareVersionObjectArray.Add($object)
                         } else {
                             $ComputerSoftwareVersionHash = [ordered]@{ }
-                            $ComputerSoftwareVersionProperties = $GlpiComputerSoftwareVersion.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ComputerSoftwareVersionProperties = $GlpiComputerSoftwareVersion.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ComputerSoftwareVersionProp in $ComputerSoftwareVersionProperties) {
-                                
+
                                 $ComputerSoftwareVersionPropNewValue = Get-GlpiToolsParameters -Parameter $ComputerSoftwareVersionProp.Name -Value $ComputerSoftwareVersionProp.Value
 
                                 $ComputerSoftwareVersionHash.Add($ComputerSoftwareVersionProp.Name, $ComputerSoftwareVersionPropNewValue)
@@ -142,18 +150,21 @@ function Get-GlpiToolsComputerSoftwareVersions {
                     } Catch {
 
                         Write-Verbose -Message "Computer Software Version ID = $CSVId is not found"
-                        
+
                     }
                     $ComputerSoftwareVersionObjectArray
                     $ComputerSoftwareVersionObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Computer_SoftwareVersion" -SearchText $SearchText -raw $Raw
+            }
             Default {
-                
+
             }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

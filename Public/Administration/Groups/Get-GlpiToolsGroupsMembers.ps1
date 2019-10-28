@@ -24,7 +24,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsGroupsMembers -GroupMemberId 326
     Function gets GroupMemberId from GLPI which is provided through -GroupMemberId after Function type, and return Group Members object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsGroupsMembers -GroupMemberId 326, 321
     Function gets Group Members Id from GLPI which is provided through -GroupMemberId keyword after Function type (u can provide many ID's like that), and return Group Members object
 .INPUTS
@@ -46,14 +46,23 @@ function Get-GlpiToolsGroupsMembers {
             ParameterSetName = "GroupMemberId")]
         [alias('GMID')]
         [string[]]$GroupMemberId,
+
+        [parameter(Mandatory = $false,
+	        ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "GroupMemberId")]
-        [switch]$Raw
-        
+        [switch]$Raw,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
+
+
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -65,10 +74,10 @@ function Get-GlpiToolsGroupsMembers {
 
         $GroupMembersArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -78,13 +87,13 @@ function Get-GlpiToolsGroupsMembers {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Group_User/?range=0-9999999999999"
                 }
-                
+
                 $GroupMembersAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GroupMember in $GroupMembersAll) {
                     $GroupMemberHash = [ordered]@{ }
-                    $GroupMemberProperties = $GroupMember.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $GroupMemberProperties = $GroupMember.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($GroupMemberProp in $GroupMemberProperties) {
                         $GroupMemberHash.Add($GroupMemberProp.Name, $GroupMemberProp.Value)
                     }
@@ -94,7 +103,7 @@ function Get-GlpiToolsGroupsMembers {
                 $GroupMembersArray
                 $GroupMembersArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            GroupMemberId { 
+            GroupMemberId {
                 foreach ( $GMId in $GroupMemberId ) {
                     $params = @{
                         headers = @{
@@ -111,8 +120,8 @@ function Get-GlpiToolsGroupsMembers {
 
                         if ($Raw) {
                             $GroupMemberHash = [ordered]@{ }
-                            $GroupMemberProperties = $GroupMember.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $GroupMemberProperties = $GroupMember.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($GroupMemberProp in $GroupMemberProperties) {
                                 $GroupMemberHash.Add($GroupMemberProp.Name, $GroupMemberProp.Value)
                             }
@@ -120,8 +129,8 @@ function Get-GlpiToolsGroupsMembers {
                             $GroupMembersArray.Add($object)
                         } else {
                             $GroupMemberHash = [ordered]@{ }
-                            $GroupMemberProperties = $GroupMember.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $GroupMemberProperties = $GroupMember.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($GroupMemberProp in $GroupMemberProperties) {
 
                                 $GroupMemberPropNewValue = Get-GlpiToolsParameters -Parameter $GroupMemberProp.Name -Value $GroupMemberProp.Value
@@ -134,16 +143,19 @@ function Get-GlpiToolsGroupsMembers {
                     } Catch {
 
                         Write-Verbose -Message "Group Member ID = $GMId is not found"
-                        
+
                     }
                     $GroupMembersArray
                     $GroupMembersArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Group_User" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }
