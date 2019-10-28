@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsInternetDomains -InternetDomainId 326
     Function gets InternetDomainId from GLPI which is provided through -InternetDomainId after Function type, and return Internet Domains object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsInternetDomains -InternetDomainId 326, 321
     Function gets Internet Domains Id from GLPI which is provided through -InternetDomainId keyword after Function type (u can provide many ID's like that), and return Internet Domains object
 .EXAMPLE
@@ -53,18 +53,27 @@ function Get-GlpiToolsDropdownsInternetDomains {
             ParameterSetName = "InternetDomainId")]
         [alias('IDID')]
         [string[]]$InternetDomainId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "InternetDomainId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "InternetDomainName")]
         [alias('IDN')]
-        [string]$InternetDomainName
+        [string]$InternetDomainName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
+
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +85,10 @@ function Get-GlpiToolsDropdownsInternetDomains {
 
         $InternetDomainsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +98,13 @@ function Get-GlpiToolsDropdownsInternetDomains {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/fqdn/?range=0-9999999999999"
                 }
-                
+
                 $InternetDomainsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($InternetDomain in $InternetDomainsAll) {
                     $InternetDomainHash = [ordered]@{ }
-                    $InternetDomainProperties = $InternetDomain.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $InternetDomainProperties = $InternetDomain.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($InternetDomainProp in $InternetDomainProperties) {
                         $InternetDomainHash.Add($InternetDomainProp.Name, $InternetDomainProp.Value)
                     }
@@ -105,7 +114,7 @@ function Get-GlpiToolsDropdownsInternetDomains {
                 $InternetDomainsArray
                 $InternetDomainsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            InternetDomainId { 
+            InternetDomainId {
                 foreach ( $IDId in $InternetDomainId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +131,8 @@ function Get-GlpiToolsDropdownsInternetDomains {
 
                         if ($Raw) {
                             $InternetDomainHash = [ordered]@{ }
-                            $InternetDomainProperties = $InternetDomain.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $InternetDomainProperties = $InternetDomain.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($InternetDomainProp in $InternetDomainProperties) {
                                 $InternetDomainHash.Add($InternetDomainProp.Name, $InternetDomainProp.Value)
                             }
@@ -131,8 +140,8 @@ function Get-GlpiToolsDropdownsInternetDomains {
                             $InternetDomainsArray.Add($object)
                         } else {
                             $InternetDomainHash = [ordered]@{ }
-                            $InternetDomainProperties = $InternetDomain.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $InternetDomainProperties = $InternetDomain.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($InternetDomainProp in $InternetDomainProperties) {
 
                                 $InternetDomainPropNewValue = Get-GlpiToolsParameters -Parameter $InternetDomainProp.Name -Value $InternetDomainProp.Value
@@ -145,19 +154,22 @@ function Get-GlpiToolsDropdownsInternetDomains {
                     } Catch {
 
                         Write-Verbose -Message "Internet Domain ID = $IDId is not found"
-                        
+
                     }
                     $InternetDomainsArray
                     $InternetDomainsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            InternetDomainName { 
+            InternetDomainName {
                 Search-GlpiToolsItems -SearchFor fqdn -SearchType contains -SearchValue $InternetDomainName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "fqdn" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsSensorTypes -SensorTypeId 326
     Function gets SensorTypeId from GLPI which is provided through -SensorTypeId after Function type, and return Sensor Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsSensorTypes -SensorTypeId 326, 321
     Function gets Sensor Types Id from GLPI which is provided through -SensorTypeId keyword after Function type (u can provide many ID's like that), and return Sensor Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsSensorTypes {
             ParameterSetName = "SensorTypeId")]
         [alias('STID')]
         [string[]]$SensorTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "SensorTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "SensorTypeName")]
         [alias('STN')]
-        [string]$SensorTypeName
+        [string]$SensorTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsSensorTypes {
 
         $SensorTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsSensorTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/DeviceSensorType/?range=0-9999999999999"
                 }
-                
+
                 $SensorTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($SensorType in $SensorTypesAll) {
                     $SensorTypeHash = [ordered]@{ }
-                    $SensorTypeProperties = $SensorType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $SensorTypeProperties = $SensorType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($SensorTypeProp in $SensorTypeProperties) {
                         $SensorTypeHash.Add($SensorTypeProp.Name, $SensorTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsSensorTypes {
                 $SensorTypesArray
                 $SensorTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            SensorTypeId { 
+            SensorTypeId {
                 foreach ( $STId in $SensorTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsSensorTypes {
 
                         if ($Raw) {
                             $SensorTypeHash = [ordered]@{ }
-                            $SensorTypeProperties = $SensorType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $SensorTypeProperties = $SensorType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($SensorTypeProp in $SensorTypeProperties) {
                                 $SensorTypeHash.Add($SensorTypeProp.Name, $SensorTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsSensorTypes {
                             $SensorTypesArray.Add($object)
                         } else {
                             $SensorTypeHash = [ordered]@{ }
-                            $SensorTypeProperties = $SensorType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $SensorTypeProperties = $SensorType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($SensorTypeProp in $SensorTypeProperties) {
 
                                 $SensorTypePropNewValue = Get-GlpiToolsParameters -Parameter $SensorTypeProp.Name -Value $SensorTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsSensorTypes {
                     } Catch {
 
                         Write-Verbose -Message "Sensor Type ID = $STId is not found"
-                        
+
                     }
                     $SensorTypesArray
                     $SensorTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            SensorTypeName { 
+            SensorTypeName {
                 Search-GlpiToolsItems -SearchFor DeviceSensorType -SearchType contains -SearchValue $SensorTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceSensorType" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

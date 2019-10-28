@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsPhonesTypes -PhoneTypeId 326
     Function gets PhoneTypeId from GLPI which is provided through -PhoneTypeId after Function type, and return Phones Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsPhonesTypes -PhoneTypeId 326, 321
     Function gets Phones Types Id from GLPI which is provided through -PhoneTypeId keyword after Function type (u can provide many ID's like that), and return Phones Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsPhonesTypes {
             ParameterSetName = "PhoneTypeId")]
         [alias('PTID')]
         [string[]]$PhoneTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "PhoneTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "PhoneTypeName")]
         [alias('PTN')]
-        [string]$PhoneTypeName
+        [string]$PhoneTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsPhonesTypes {
 
         $PhonesTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsPhonesTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/phonetype/?range=0-9999999999999"
                 }
-                
+
                 $PhonesTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($PhoneType in $PhonesTypesAll) {
                     $PhoneTypeHash = [ordered]@{ }
-                    $PhoneTypeProperties = $PhoneType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $PhoneTypeProperties = $PhoneType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($PhoneTypeProp in $PhoneTypeProperties) {
                         $PhoneTypeHash.Add($PhoneTypeProp.Name, $PhoneTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsPhonesTypes {
                 $PhonesTypesArray
                 $PhonesTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            PhoneTypeId { 
+            PhoneTypeId {
                 foreach ( $PTId in $PhoneTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsPhonesTypes {
 
                         if ($Raw) {
                             $PhoneTypeHash = [ordered]@{ }
-                            $PhoneTypeProperties = $PhoneType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PhoneTypeProperties = $PhoneType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PhoneTypeProp in $PhoneTypeProperties) {
                                 $PhoneTypeHash.Add($PhoneTypeProp.Name, $PhoneTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsPhonesTypes {
                             $PhonesTypesArray.Add($object)
                         } else {
                             $PhoneTypeHash = [ordered]@{ }
-                            $PhoneTypeProperties = $PhoneType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PhoneTypeProperties = $PhoneType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PhoneTypeProp in $PhoneTypeProperties) {
 
                                 $PhoneTypePropNewValue = Get-GlpiToolsParameters -Parameter $PhoneTypeProp.Name -Value $PhoneTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsPhonesTypes {
                     } Catch {
 
                         Write-Verbose -Message "Phone Type ID = $PTId is not found"
-                        
+
                     }
                     $PhonesTypesArray
                     $PhonesTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            PhoneTypeName { 
+            PhoneTypeName {
                 Search-GlpiToolsItems -SearchFor phonetype -SearchType contains -SearchValue $PhoneTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "phonetype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

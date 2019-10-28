@@ -15,7 +15,7 @@
     Provide to this param States Name from GLPI States Bookmark
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsStatusesOfItems -All
-    Example will return all States from States. 
+    Example will return all States from States.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsDropdownsStatusesOfItems
     Function gets StatesID from GLPI from Pipline, and return States object
@@ -25,7 +25,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsStatusesOfItems -StatesId 326
     Function gets StatesID from GLPI which is provided through -StatesId after Function type, and return States object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsStatusesOfItems -StatesId 326, 321
     Function gets StatesID from GLPI which is provided through -StatesId keyword after Function type (u can provide many ID's like that), and return States object
 .EXAMPLE
@@ -41,7 +41,7 @@
 .INPUTS
     StateId, StateName
 .OUTPUTS
-    Function returns PSCustomObject with statuses of items from GLPI 
+    Function returns PSCustomObject with statuses of items from GLPI
 .NOTES
     PSP 01/2019
 #>
@@ -58,6 +58,9 @@ function Get-GlpiToolsDropdownsStatusesOfItems {
             ParameterSetName = "StatesId")]
         [alias('SID')]
         [string[]]$StatesId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "StatesId")]
         [switch]$Raw,
@@ -65,12 +68,17 @@ function Get-GlpiToolsDropdownsStatusesOfItems {
         [parameter(Mandatory = $true,
             ParameterSetName = "StatesName")]
         [alias('SN')]
-        [string]$StatesName
+        [string]$StatesName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
 
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -82,7 +90,7 @@ function Get-GlpiToolsDropdownsStatusesOfItems {
 
         $StatesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
             All {
@@ -95,13 +103,13 @@ function Get-GlpiToolsDropdownsStatusesOfItems {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/State/?range=0-9999999999999"
                 }
-                
+
                 $GlpiStatesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiStates in $GlpiStatesAll) {
                     $StatesHash = [ordered]@{ }
-                            $StatesProperties = $GlpiStates.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $StatesProperties = $GlpiStates.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($StatesProp in $StatesProperties) {
                                 $StatesHash.Add($StatesProp.Name, $StatesProp.Value)
                             }
@@ -128,8 +136,8 @@ function Get-GlpiToolsDropdownsStatusesOfItems {
 
                         if ($Raw) {
                             $StatesHash = [ordered]@{ }
-                            $StatesProperties = $GlpiStates.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $StatesProperties = $GlpiStates.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($StatesProp in $StatesProperties) {
                                 $StatesHash.Add($StatesProp.Name, $StatesProp.Value)
                             }
@@ -137,8 +145,8 @@ function Get-GlpiToolsDropdownsStatusesOfItems {
                             $StatesArray.Add($object)
                         } else {
                             $StatesHash = [ordered]@{ }
-                            $StatesProperties = $GlpiStates.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $StatesProperties = $GlpiStates.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($StatesProp in $StatesProperties) {
 
                                 switch ($StatesProp.Name) {
@@ -156,7 +164,7 @@ function Get-GlpiToolsDropdownsStatusesOfItems {
                     } Catch {
 
                         Write-Verbose -Message "State ID = $SId is not found"
-                        
+
                     }
                     $StatesArray
                     $StatesArray = [System.Collections.Generic.List[PSObject]]::New()
@@ -165,10 +173,13 @@ function Get-GlpiToolsDropdownsStatusesOfItems {
             StatesName {
                 Search-GlpiToolsItems -SearchFor State -SearchType contains -SearchValue $StatesName
             }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "State" -SearchText $SearchText -raw $Raw
+            }
             Default {}
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

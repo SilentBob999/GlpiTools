@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsSimcardTypes -SimcardTypeId 326
     Function gets SimcardTypeId from GLPI which is provided through -SimcardTypeId after Function type, and return Simcard Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsSimcardTypes -SimcardTypeId 326, 321
     Function gets Simcard Types Id from GLPI which is provided through -SimcardTypeId keyword after Function type (u can provide many ID's like that), and return Simcard Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsSimcardTypes {
             ParameterSetName = "SimcardTypeId")]
         [alias('STID')]
         [string[]]$SimcardTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "SimcardTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "SimcardTypeName")]
         [alias('STN')]
-        [string]$SimcardTypeName
+        [string]$SimcardTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsSimcardTypes {
 
         $SimcardTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsSimcardTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/DeviceSimcardType/?range=0-9999999999999"
                 }
-                
+
                 $SimcardTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($SimcardType in $SimcardTypesAll) {
                     $SimcardTypeHash = [ordered]@{ }
-                    $SimcardTypeProperties = $SimcardType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $SimcardTypeProperties = $SimcardType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($SimcardTypeProp in $SimcardTypeProperties) {
                         $SimcardTypeHash.Add($SimcardTypeProp.Name, $SimcardTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsSimcardTypes {
                 $SimcardTypesArray
                 $SimcardTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            SimcardTypeId { 
+            SimcardTypeId {
                 foreach ( $STId in $SimcardTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsSimcardTypes {
 
                         if ($Raw) {
                             $SimcardTypeHash = [ordered]@{ }
-                            $SimcardTypeProperties = $SimcardType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $SimcardTypeProperties = $SimcardType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($SimcardTypeProp in $SimcardTypeProperties) {
                                 $SimcardTypeHash.Add($SimcardTypeProp.Name, $SimcardTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsSimcardTypes {
                             $SimcardTypesArray.Add($object)
                         } else {
                             $SimcardTypeHash = [ordered]@{ }
-                            $SimcardTypeProperties = $SimcardType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $SimcardTypeProperties = $SimcardType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($SimcardTypeProp in $SimcardTypeProperties) {
 
                                 $SimcardTypePropNewValue = Get-GlpiToolsParameters -Parameter $SimcardTypeProp.Name -Value $SimcardTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsSimcardTypes {
                     } Catch {
 
                         Write-Verbose -Message "Simcard Type ID = $STId is not found"
-                        
+
                     }
                     $SimcardTypesArray
                     $SimcardTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            SimcardTypeName { 
+            SimcardTypeName {
                 Search-GlpiToolsItems -SearchFor DeviceSimcardType -SearchType contains -SearchValue $SimcardTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceSimcardType" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

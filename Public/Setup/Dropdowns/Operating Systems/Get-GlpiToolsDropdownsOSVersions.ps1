@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOSVersions -OSVersionId 326
     Function gets OSVersionId from GLPI which is provided through -OSVersionId after Function type, and return Operating Systems Versions object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOSVersions -OSVersionId 326, 321
     Function gets Operating Systems VersionsId from GLPI which is provided through -OSVersionId keyword after Function type (u can provide many ID's like that), and return Operating Systems Versions object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsOSVersions {
             ParameterSetName = "OSVersionId")]
         [alias('OSVID')]
         [string[]]$OSVersionId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "OSVersionId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "OSVersionName")]
         [alias('OSVN')]
-        [string]$OSVersionName
+        [string]$OSVersionName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsOSVersions {
 
         $OSVersionsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsOSVersions {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/operatingsystemversion/?range=0-9999999999999"
                 }
-                
+
                 $OSVersionsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($OSVersion in $OSVersionsAll) {
                     $OSVersionHash = [ordered]@{ }
-                    $OSVersionProperties = $OSVersion.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $OSVersionProperties = $OSVersion.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($OSVersionProp in $OSVersionProperties) {
                         $OSVersionHash.Add($OSVersionProp.Name, $OSVersionProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsOSVersions {
                 $OSVersionsArray
                 $OSVersionsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            OSVersionId { 
+            OSVersionId {
                 foreach ( $OSVId in $OSVersionId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsOSVersions {
 
                         if ($Raw) {
                             $OSVersionHash = [ordered]@{ }
-                            $OSVersionProperties = $OSVersion.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OSVersionProperties = $OSVersion.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OSVersionProp in $OSVersionProperties) {
                                 $OSVersionHash.Add($OSVersionProp.Name, $OSVersionProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsOSVersions {
                             $OSVersionsArray.Add($object)
                         } else {
                             $OSVersionHash = [ordered]@{ }
-                            $OSVersionProperties = $OSVersion.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OSVersionProperties = $OSVersion.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OSVersionProp in $OSVersionProperties) {
 
                                 $OSVersionPropNewValue = Get-GlpiToolsParameters -Parameter $OSVersionProp.Name -Value $OSVersionProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsOSVersions {
                     } Catch {
 
                         Write-Verbose -Message "Operating Systems Versions ID = $OSVId is not found"
-                        
+
                     }
                     $OSVersionsArray
                     $OSVersionsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            OSVersionName { 
+            OSVersionName {
                 Search-GlpiToolsItems -SearchFor operatingsystemversion -SearchType contains -SearchValue $OSVersionName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "operatingsystemversion" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

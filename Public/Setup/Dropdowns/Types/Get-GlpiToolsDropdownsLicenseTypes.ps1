@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsLicenseTypes -LicenseTypeId 326
     Function gets LicenseTypeId from GLPI which is provided through -LicenseTypeId after Function type, and return License Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsLicenseTypes -LicenseTypeId 326, 321
     Function gets License Types Id from GLPI which is provided through -LicenseTypeId keyword after Function type (u can provide many ID's like that), and return License Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsLicenseTypes {
             ParameterSetName = "LicenseTypeId")]
         [alias('LTID')]
         [string[]]$LicenseTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "LicenseTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "LicenseTypeName")]
         [alias('LTN')]
-        [string]$LicenseTypeName
+        [string]$LicenseTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsLicenseTypes {
 
         $LicenseTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsLicenseTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/softwarelicensetype/?range=0-9999999999999"
                 }
-                
+
                 $LicenseTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($LicenseType in $LicenseTypesAll) {
                     $LicenseTypeHash = [ordered]@{ }
-                    $LicenseTypeProperties = $LicenseType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $LicenseTypeProperties = $LicenseType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($LicenseTypeProp in $LicenseTypeProperties) {
                         $LicenseTypeHash.Add($LicenseTypeProp.Name, $LicenseTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsLicenseTypes {
                 $LicenseTypesArray
                 $LicenseTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            LicenseTypeId { 
+            LicenseTypeId {
                 foreach ( $LTId in $LicenseTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsLicenseTypes {
 
                         if ($Raw) {
                             $LicenseTypeHash = [ordered]@{ }
-                            $LicenseTypeProperties = $LicenseType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $LicenseTypeProperties = $LicenseType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($LicenseTypeProp in $LicenseTypeProperties) {
                                 $LicenseTypeHash.Add($LicenseTypeProp.Name, $LicenseTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsLicenseTypes {
                             $LicenseTypesArray.Add($object)
                         } else {
                             $LicenseTypeHash = [ordered]@{ }
-                            $LicenseTypeProperties = $LicenseType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $LicenseTypeProperties = $LicenseType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($LicenseTypeProp in $LicenseTypeProperties) {
 
                                 $LicenseTypePropNewValue = Get-GlpiToolsParameters -Parameter $LicenseTypeProp.Name -Value $LicenseTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsLicenseTypes {
                     } Catch {
 
                         Write-Verbose -Message "License Type ID = $LTId is not found"
-                        
+
                     }
                     $LicenseTypesArray
                     $LicenseTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            LicenseTypeName { 
+            LicenseTypeName {
                 Search-GlpiToolsItems -SearchFor softwarelicensetype -SearchType contains -SearchValue $LicenseTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "softwarelicensetype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

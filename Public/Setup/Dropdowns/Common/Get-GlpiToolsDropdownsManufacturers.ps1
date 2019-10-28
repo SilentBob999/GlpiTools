@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsManufacturers -ManufacturerId 326
     Function gets ManufacturerId from GLPI which is provided through -ManufacturerId after Function type, and return Manufacturer object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsManufacturers -ManufacturerId 326, 321
     Function gets ManufacturerId from GLPI which is provided through -ManufacturerId keyword after Function type (u can provide many ID's like that), and return Manufacturer object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsManufacturers {
             ParameterSetName = "ManufacturerId")]
         [alias('MID')]
         [string[]]$ManufacturerId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ManufacturerId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "ManufacturerName")]
         [alias('MN')]
-        [string]$ManufacturerName
+        [string]$ManufacturerName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsManufacturers {
 
         $ManufacturerArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsManufacturers {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Manufacturer/?range=0-9999999999999"
                 }
-                
+
                 $GlpiManufacturerAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($ManufacturerModel in $GlpiManufacturerAll) {
                     $ManufacturerHash = [ordered]@{ }
-                    $ManufacturerProperties = $ManufacturerModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $ManufacturerProperties = $ManufacturerModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($ManufacturerProp in $ManufacturerProperties) {
                         $ManufacturerHash.Add($ManufacturerProp.Name, $ManufacturerProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsManufacturers {
                 $ManufacturerArray
                 $ManufacturerArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ManufacturerId { 
+            ManufacturerId {
                 foreach ( $MId in $ManufacturerId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsManufacturers {
 
                         if ($Raw) {
                             $ManufacturerHash = [ordered]@{ }
-                            $ManufacturerProperties = $ManufacturerModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ManufacturerProperties = $ManufacturerModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ManufacturerProp in $ManufacturerProperties) {
                                 $ManufacturerHash.Add($ManufacturerProp.Name, $ManufacturerProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsManufacturers {
                             $ManufacturerArray.Add($object)
                         } else {
                             $ManufacturerHash = [ordered]@{ }
-                            $ManufacturerProperties = $ManufacturerModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ManufacturerProperties = $ManufacturerModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ManufacturerProp in $ManufacturerProperties) {
 
                                 switch ($ManufacturerProp.Name) {
@@ -147,19 +155,22 @@ function Get-GlpiToolsDropdownsManufacturers {
                     } Catch {
 
                         Write-Verbose -Message "Manufacturer ID = $MId is not found"
-                        
+
                     }
                     $ManufacturerArray
                     $ManufacturerArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ManufacturerName { 
+            ManufacturerName {
                 Search-GlpiToolsItems -SearchFor Manufacturer -SearchType contains -SearchValue $ManufacturerName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Manufacturer" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

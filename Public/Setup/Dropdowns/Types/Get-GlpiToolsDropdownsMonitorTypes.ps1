@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsMonitorTypes -MonitorTypeId 326
     Function gets MonitorTypeId from GLPI which is provided through -MonitorTypeId after Function type, and return Monitor Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsMonitorTypes -MonitorTypeId 326, 321
     Function gets Monitor Types Id from GLPI which is provided through -MonitorTypeId keyword after Function type (u can provide many ID's like that), and return Monitor Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsMonitorTypes {
             ParameterSetName = "MonitorTypeId")]
         [alias('MTID')]
         [string[]]$MonitorTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "MonitorTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "MonitorTypeName")]
         [alias('MTN')]
-        [string]$MonitorTypeName
+        [string]$MonitorTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsMonitorTypes {
 
         $MonitorTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsMonitorTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/monitortype/?range=0-9999999999999"
                 }
-                
+
                 $MonitorTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($MonitorType in $MonitorTypesAll) {
                     $MonitorTypeHash = [ordered]@{ }
-                    $MonitorTypeProperties = $MonitorType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $MonitorTypeProperties = $MonitorType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($MonitorTypeProp in $MonitorTypeProperties) {
                         $MonitorTypeHash.Add($MonitorTypeProp.Name, $MonitorTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsMonitorTypes {
                 $MonitorTypesArray
                 $MonitorTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            MonitorTypeId { 
+            MonitorTypeId {
                 foreach ( $MTId in $MonitorTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsMonitorTypes {
 
                         if ($Raw) {
                             $MonitorTypeHash = [ordered]@{ }
-                            $MonitorTypeProperties = $MonitorType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $MonitorTypeProperties = $MonitorType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($MonitorTypeProp in $MonitorTypeProperties) {
                                 $MonitorTypeHash.Add($MonitorTypeProp.Name, $MonitorTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsMonitorTypes {
                             $MonitorTypesArray.Add($object)
                         } else {
                             $MonitorTypeHash = [ordered]@{ }
-                            $MonitorTypeProperties = $MonitorType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $MonitorTypeProperties = $MonitorType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($MonitorTypeProp in $MonitorTypeProperties) {
 
                                 $MonitorTypePropNewValue = Get-GlpiToolsParameters -Parameter $MonitorTypeProp.Name -Value $MonitorTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsMonitorTypes {
                     } Catch {
 
                         Write-Verbose -Message "Monitor Type ID = $MTId is not found"
-                        
+
                     }
                     $MonitorTypesArray
                     $MonitorTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            MonitorTypeName { 
+            MonitorTypeName {
                 Search-GlpiToolsItems -SearchFor monitortype -SearchType contains -SearchValue $MonitorTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "monitortype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

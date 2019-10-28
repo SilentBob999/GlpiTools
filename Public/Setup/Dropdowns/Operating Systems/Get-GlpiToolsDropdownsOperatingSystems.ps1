@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOperatingSystems -OperatingSystemId 326
     Function gets OperatingSystemId from GLPI which is provided through -OperatingSystemId after Function type, and return Operating Systems object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOperatingSystems -OperatingSystemId 326, 321
     Function gets Operating SystemsId from GLPI which is provided through -OperatingSystemId keyword after Function type (u can provide many ID's like that), and return Operating Systems object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsOperatingSystems {
             ParameterSetName = "OperatingSystemId")]
         [alias('OSID')]
         [string[]]$OperatingSystemId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "OperatingSystemId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "OperatingSystemName")]
         [alias('OSN')]
-        [string]$OperatingSystemName
+        [string]$OperatingSystemName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsOperatingSystems {
 
         $OperatingSystemArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsOperatingSystems {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/OperatingSystem/?range=0-9999999999999"
                 }
-                
+
                 $OperatingSystemsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($OperatingSystem in $OperatingSystemsAll) {
                     $OperatingSystemHash = [ordered]@{ }
-                    $OperatingSystemProperties = $OperatingSystem.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $OperatingSystemProperties = $OperatingSystem.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($OperatingSystemProp in $OperatingSystemProperties) {
                         $OperatingSystemHash.Add($OperatingSystemProp.Name, $OperatingSystemProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsOperatingSystems {
                 $OperatingSystemArray
                 $OperatingSystemArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            OperatingSystemId { 
+            OperatingSystemId {
                 foreach ( $OSId in $OperatingSystemId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsOperatingSystems {
 
                         if ($Raw) {
                             $OperatingSystemHash = [ordered]@{ }
-                            $OperatingSystemProperties = $OperatingSystem.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OperatingSystemProperties = $OperatingSystem.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OperatingSystemProp in $OperatingSystemProperties) {
                                 $OperatingSystemHash.Add($OperatingSystemProp.Name, $OperatingSystemProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsOperatingSystems {
                             $OperatingSystemArray.Add($object)
                         } else {
                             $OperatingSystemHash = [ordered]@{ }
-                            $OperatingSystemProperties = $OperatingSystem.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OperatingSystemProperties = $OperatingSystem.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OperatingSystemProp in $OperatingSystemProperties) {
 
                                 $OperatingSystemPropNewValue = Get-GlpiToolsParameters -Parameter $OperatingSystemProp.Name -Value $OperatingSystemProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsOperatingSystems {
                     } Catch {
 
                         Write-Verbose -Message "Operating Systems ID = $OSId is not found"
-                        
+
                     }
                     $OperatingSystemArray
                     $OperatingSystemArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            OperatingSystemName { 
+            OperatingSystemName {
                 Search-GlpiToolsItems -SearchFor Operatingsystem -SearchType contains -SearchValue $OperatingSystemName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Operatingsystem" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

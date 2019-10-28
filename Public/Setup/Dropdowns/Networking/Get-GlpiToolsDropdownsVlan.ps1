@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsVlan -VlanId 326
     Function gets VlanId from GLPI which is provided through -VlanId after Function type, and return Vlan object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsVlan -VlanId 326, 321
     Function gets Vlan Id from GLPI which is provided through -VlanId keyword after Function type (u can provide many ID's like that), and return Vlan object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsVlan {
             ParameterSetName = "VlanId")]
         [alias('VID')]
         [string[]]$VlanId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "VlanId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "VlanName")]
         [alias('VN')]
-        [string]$VlanName
+        [string]$VlanName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsVlan {
 
         $VlanArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsVlan {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/vlan/?range=0-9999999999999"
                 }
-                
+
                 $VlanAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($Vlan in $VlanAll) {
                     $VlanHash = [ordered]@{ }
-                    $VlanProperties = $Vlan.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $VlanProperties = $Vlan.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($VlanProp in $VlanProperties) {
                         $VlanHash.Add($VlanProp.Name, $VlanProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsVlan {
                 $VlanArray
                 $VlanArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            VlanId { 
+            VlanId {
                 foreach ( $VId in $VlanId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsVlan {
 
                         if ($Raw) {
                             $VlanHash = [ordered]@{ }
-                            $VlanProperties = $Vlan.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $VlanProperties = $Vlan.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($VlanProp in $VlanProperties) {
                                 $VlanHash.Add($VlanProp.Name, $VlanProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsVlan {
                             $VlanArray.Add($object)
                         } else {
                             $VlanHash = [ordered]@{ }
-                            $VlanProperties = $Vlan.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $VlanProperties = $Vlan.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($VlanProp in $VlanProperties) {
 
                                 $VlanPropNewValue = Get-GlpiToolsParameters -Parameter $VlanProp.Name -Value $VlanProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsVlan {
                     } Catch {
 
                         Write-Verbose -Message "Vlan ID = $VId is not found"
-                        
+
                     }
                     $VlanArray
                     $VlanArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            VlanName { 
+            VlanName {
                 Search-GlpiToolsItems -SearchFor vlan -SearchType contains -SearchValue $VlanName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "vlan" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

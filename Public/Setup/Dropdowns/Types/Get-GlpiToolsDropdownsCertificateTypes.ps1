@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsCertificateTypes -CertificateTypeId 326
     Function gets CertificateTypeId from GLPI which is provided through -CertificateTypeId after Function type, and return Certificate Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsCertificateTypes -CertificateTypeId 326, 321
     Function gets Certificate Types Id from GLPI which is provided through -CertificateTypeId keyword after Function type (u can provide many ID's like that), and return Certificate Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsCertificateTypes {
             ParameterSetName = "CertificateTypeId")]
         [alias('CTID')]
         [string[]]$CertificateTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "CertificateTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "CertificateTypeName")]
         [alias('CTN')]
-        [string]$CertificateTypeName
+        [string]$CertificateTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsCertificateTypes {
 
         $CertificateTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsCertificateTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/certificatetype/?range=0-9999999999999"
                 }
-                
+
                 $CertificateTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($CertificateType in $CertificateTypesAll) {
                     $CertificateTypeHash = [ordered]@{ }
-                    $CertificateTypeProperties = $CertificateType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $CertificateTypeProperties = $CertificateType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($CertificateTypeProp in $CertificateTypeProperties) {
                         $CertificateTypeHash.Add($CertificateTypeProp.Name, $CertificateTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsCertificateTypes {
                 $CertificateTypesArray
                 $CertificateTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            CertificateTypeId { 
+            CertificateTypeId {
                 foreach ( $CTId in $CertificateTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsCertificateTypes {
 
                         if ($Raw) {
                             $CertificateTypeHash = [ordered]@{ }
-                            $CertificateTypeProperties = $CertificateType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $CertificateTypeProperties = $CertificateType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($CertificateTypeProp in $CertificateTypeProperties) {
                                 $CertificateTypeHash.Add($CertificateTypeProp.Name, $CertificateTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsCertificateTypes {
                             $CertificateTypesArray.Add($object)
                         } else {
                             $CertificateTypeHash = [ordered]@{ }
-                            $CertificateTypeProperties = $CertificateType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $CertificateTypeProperties = $CertificateType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($CertificateTypeProp in $CertificateTypeProperties) {
 
                                 $CertificateTypePropNewValue = Get-GlpiToolsParameters -Parameter $CertificateTypeProp.Name -Value $CertificateTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsCertificateTypes {
                     } Catch {
 
                         Write-Verbose -Message "Certificate Type ID = $CTId is not found"
-                        
+
                     }
                     $CertificateTypesArray
                     $CertificateTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            CertificateTypeName { 
+            CertificateTypeName {
                 Search-GlpiToolsItems -SearchFor certificatetype -SearchType contains -SearchValue $CertificateTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "certificatetype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

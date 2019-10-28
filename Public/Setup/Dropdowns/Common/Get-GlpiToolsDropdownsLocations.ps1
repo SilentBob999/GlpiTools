@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsLocations -LocationsId 326
     Function gets LocationsId from GLPI which is provided through -LocationsId after Function type, and return Locations object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsLocations -LocationsId 326, 321
     Function gets LocationsId from GLPI which is provided through -LocationsId keyword after Function type (u can provide many ID's like that), and return Locations object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsLocations {
             ParameterSetName = "LocationsId")]
         [alias('LID')]
         [string[]]$LocationsId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "LocationsId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "LocationsName")]
         [alias('LN')]
-        [string]$LocationsName
+        [string]$LocationsName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsLocations {
 
         $LocationsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsLocations {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Location/?range=0-9999999999999"
                 }
-                
+
                 $GlpiLocationsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($LocationModel in $GlpiLocationsAll) {
                     $LocationHash = [ordered]@{ }
-                    $LocationProperties = $LocationModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $LocationProperties = $LocationModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($LocationProp in $LocationProperties) {
                         $LocationHash.Add($LocationProp.Name, $LocationProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsLocations {
                 $LocationsArray
                 $LocationsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            LocationsId { 
+            LocationsId {
                 foreach ( $LId in $LocationsId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsLocations {
 
                         if ($Raw) {
                             $LocationHash = [ordered]@{ }
-                            $LocationProperties = $LocationModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $LocationProperties = $LocationModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($LocationProp in $LocationProperties) {
                                 $LocationHash.Add($LocationProp.Name, $LocationProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsLocations {
                             $LocationsArray.Add($object)
                         } else {
                             $LocationHash = [ordered]@{ }
-                            $LocationProperties = $LocationModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $LocationProperties = $LocationModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($LocationProp in $LocationProperties) {
 
                                 switch ($LocationProp.Name) {
@@ -147,19 +155,22 @@ function Get-GlpiToolsDropdownsLocations {
                     } Catch {
 
                         Write-Verbose -Message "Location ID = $LId is not found"
-                        
+
                     }
                     $LocationsArray
                     $LocationsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            LocationsName { 
-                Search-GlpiToolsItems -SearchFor Location -SearchType contains -SearchValue $LocationsName 
-            } 
+            LocationsName {
+                Search-GlpiToolsItems -SearchFor Location -SearchType contains -SearchValue $LocationsName
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Location" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

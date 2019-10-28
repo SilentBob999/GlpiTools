@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceMotherboardModels -DeviceMotherboardModelId 326
     Function gets DeviceMotherboardModelId from GLPI which is provided through -DeviceMotherboardModelId after Function type, and return Device Motherboard Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceMotherboardModels -DeviceMotherboardModelId 326, 321
     Function gets Device Motherboard Models Id from GLPI which is provided through -DeviceMotherboardModelId keyword after Function type (u can provide many ID's like that), and return Device Motherboard Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsDeviceMotherboardModels {
             ParameterSetName = "DeviceMotherboardModelId")]
         [alias('DMMID')]
         [string[]]$DeviceMotherboardModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DeviceMotherboardModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DeviceMotherboardModelName")]
         [alias('DMMN')]
-        [string]$DeviceMotherboardModelName
+        [string]$DeviceMotherboardModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsDeviceMotherboardModels {
 
         $DeviceMotherboardModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsDeviceMotherboardModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/DeviceMotherBoardModel/?range=0-9999999999999"
                 }
-                
+
                 $DeviceMotherboardModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DeviceMotherboardModel in $DeviceMotherboardModelsAll) {
                     $DeviceMotherboardModelHash = [ordered]@{ }
-                    $DeviceMotherboardModelProperties = $DeviceMotherboardModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DeviceMotherboardModelProperties = $DeviceMotherboardModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DeviceMotherboardModelProp in $DeviceMotherboardModelProperties) {
                         $DeviceMotherboardModelHash.Add($DeviceMotherboardModelProp.Name, $DeviceMotherboardModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsDeviceMotherboardModels {
                 $DeviceMotherboardModelsArray
                 $DeviceMotherboardModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DeviceMotherboardModelId { 
+            DeviceMotherboardModelId {
                 foreach ( $DMMId in $DeviceMotherboardModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsDeviceMotherboardModels {
 
                         if ($Raw) {
                             $DeviceMotherboardModelHash = [ordered]@{ }
-                            $DeviceMotherboardModelProperties = $DeviceMotherboardModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceMotherboardModelProperties = $DeviceMotherboardModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceMotherboardModelProp in $DeviceMotherboardModelProperties) {
                                 $DeviceMotherboardModelHash.Add($DeviceMotherboardModelProp.Name, $DeviceMotherboardModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsDeviceMotherboardModels {
                             $DeviceMotherboardModelsArray.Add($object)
                         } else {
                             $DeviceMotherboardModelHash = [ordered]@{ }
-                            $DeviceMotherboardModelProperties = $DeviceMotherboardModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceMotherboardModelProperties = $DeviceMotherboardModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceMotherboardModelProp in $DeviceMotherboardModelProperties) {
 
                                 $DeviceMotherboardModelPropNewValue = Get-GlpiToolsParameters -Parameter $DeviceMotherboardModelProp.Name -Value $DeviceMotherboardModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsDeviceMotherboardModels {
                     } Catch {
 
                         Write-Verbose -Message "Device Motherboard Model ID = $DMMId is not found"
-                        
+
                     }
                     $DeviceMotherboardModelsArray
                     $DeviceMotherboardModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DeviceMotherboardModelName { 
+            DeviceMotherboardModelName {
                 Search-GlpiToolsItems -SearchFor DeviceMotherBoardModel -SearchType contains -SearchValue $DeviceMotherboardModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceMotherBoardModel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

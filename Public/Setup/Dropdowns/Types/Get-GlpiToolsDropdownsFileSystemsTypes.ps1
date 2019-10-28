@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsFileSystemsTypes -FileSystemTypeId 326
     Function gets FileSystemTypeId from GLPI which is provided through -FileSystemTypeId after Function type, and return File Systems Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsFileSystemsTypes -FileSystemTypeId 326, 321
     Function gets File Systems Types Id from GLPI which is provided through -FileSystemTypeId keyword after Function type (u can provide many ID's like that), and return File Systems Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsFileSystemsTypes {
             ParameterSetName = "FileSystemTypeId")]
         [alias('FSTID')]
         [string[]]$FileSystemTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "FileSystemTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "FileSystemTypeName")]
         [alias('FSTN')]
-        [string]$FileSystemTypeName
+        [string]$FileSystemTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsFileSystemsTypes {
 
         $FileSystemsTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsFileSystemsTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/filesystem/?range=0-9999999999999"
                 }
-                
+
                 $FileSystemsTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($FileSystemType in $FileSystemsTypesAll) {
                     $FileSystemTypeHash = [ordered]@{ }
-                    $FileSystemTypeProperties = $FileSystemType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $FileSystemTypeProperties = $FileSystemType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($FileSystemTypeProp in $FileSystemTypeProperties) {
                         $FileSystemTypeHash.Add($FileSystemTypeProp.Name, $FileSystemTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsFileSystemsTypes {
                 $FileSystemsTypesArray
                 $FileSystemsTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            FileSystemTypeId { 
+            FileSystemTypeId {
                 foreach ( $FSTId in $FileSystemTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsFileSystemsTypes {
 
                         if ($Raw) {
                             $FileSystemTypeHash = [ordered]@{ }
-                            $FileSystemTypeProperties = $FileSystemType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $FileSystemTypeProperties = $FileSystemType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($FileSystemTypeProp in $FileSystemTypeProperties) {
                                 $FileSystemTypeHash.Add($FileSystemTypeProp.Name, $FileSystemTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsFileSystemsTypes {
                             $FileSystemsTypesArray.Add($object)
                         } else {
                             $FileSystemTypeHash = [ordered]@{ }
-                            $FileSystemTypeProperties = $FileSystemType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $FileSystemTypeProperties = $FileSystemType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($FileSystemTypeProp in $FileSystemTypeProperties) {
 
                                 $FileSystemTypePropNewValue = Get-GlpiToolsParameters -Parameter $FileSystemTypeProp.Name -Value $FileSystemTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsFileSystemsTypes {
                     } Catch {
 
                         Write-Verbose -Message "File System Type ID = $FSTId is not found"
-                        
+
                     }
                     $FileSystemsTypesArray
                     $FileSystemsTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            FileSystemTypeName { 
+            FileSystemTypeName {
                 Search-GlpiToolsItems -SearchFor filesystem -SearchType contains -SearchValue $FileSystemTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "filesystem" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

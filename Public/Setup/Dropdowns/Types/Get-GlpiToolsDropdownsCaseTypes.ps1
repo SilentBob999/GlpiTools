@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsCaseTypes -CaseTypeId 326
     Function gets CaseTypeId from GLPI which is provided through -CaseTypeId after Function type, and return Case Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsCaseTypes -CaseTypeId 326, 321
     Function gets Case Types Id from GLPI which is provided through -CaseTypeId keyword after Function type (u can provide many ID's like that), and return Case Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsCaseTypes {
             ParameterSetName = "CaseTypeId")]
         [alias('CTID')]
         [string[]]$CaseTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "CaseTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "CaseTypeName")]
         [alias('CTN')]
-        [string]$CaseTypeName
+        [string]$CaseTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsCaseTypes {
 
         $CaseTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsCaseTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/DeviceCaseType/?range=0-9999999999999"
                 }
-                
+
                 $CaseTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($CaseType in $CaseTypesAll) {
                     $CaseTypeHash = [ordered]@{ }
-                    $CaseTypeProperties = $CaseType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $CaseTypeProperties = $CaseType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($CaseTypeProp in $CaseTypeProperties) {
                         $CaseTypeHash.Add($CaseTypeProp.Name, $CaseTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsCaseTypes {
                 $CaseTypesArray
                 $CaseTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            CaseTypeId { 
+            CaseTypeId {
                 foreach ( $CTId in $CaseTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsCaseTypes {
 
                         if ($Raw) {
                             $CaseTypeHash = [ordered]@{ }
-                            $CaseTypeProperties = $CaseType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $CaseTypeProperties = $CaseType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($CaseTypeProp in $CaseTypeProperties) {
                                 $CaseTypeHash.Add($CaseTypeProp.Name, $CaseTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsCaseTypes {
                             $CaseTypesArray.Add($object)
                         } else {
                             $CaseTypeHash = [ordered]@{ }
-                            $CaseTypeProperties = $CaseType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $CaseTypeProperties = $CaseType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($CaseTypeProp in $CaseTypeProperties) {
 
                                 $CaseTypePropNewValue = Get-GlpiToolsParameters -Parameter $CaseTypeProp.Name -Value $CaseTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsCaseTypes {
                     } Catch {
 
                         Write-Verbose -Message "Case Type ID = $CTId is not found"
-                        
+
                     }
                     $CaseTypesArray
                     $CaseTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            CaseTypeName { 
+            CaseTypeName {
                 Search-GlpiToolsItems -SearchFor DeviceCaseType -SearchType contains -SearchValue $CaseTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceCaseType" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

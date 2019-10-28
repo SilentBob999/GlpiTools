@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDevicePowerSupplyModels -DevicePowerSupplyModelId 326
     Function gets DevicePowerSupplyModelId from GLPI which is provided through -DevicePowerSupplyModelId after Function type, and return Device Power Supply Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDevicePowerSupplyModels -DevicePowerSupplyModelId 326, 321
     Function gets Device Power Supply Models Id from GLPI which is provided through -DevicePowerSupplyModelId keyword after Function type (u can provide many ID's like that), and return Device Power Supply Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsDevicePowerSupplyModels {
             ParameterSetName = "DevicePowerSupplyModelId")]
         [alias('DPSMID')]
         [string[]]$DevicePowerSupplyModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DevicePowerSupplyModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DevicePowerSupplyModelName")]
         [alias('DPSMN')]
-        [string]$DevicePowerSupplyModelName
+        [string]$DevicePowerSupplyModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsDevicePowerSupplyModels {
 
         $DevicePowerSupplyModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsDevicePowerSupplyModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/DevicePowerSupplyModel/?range=0-9999999999999"
                 }
-                
+
                 $DevicePowerSupplyModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DevicePowerSupplyModel in $DevicePowerSupplyModelsAll) {
                     $DevicePowerSupplyModelHash = [ordered]@{ }
-                    $DevicePowerSupplyModelProperties = $DevicePowerSupplyModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DevicePowerSupplyModelProperties = $DevicePowerSupplyModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DevicePowerSupplyModelProp in $DevicePowerSupplyModelProperties) {
                         $DevicePowerSupplyModelHash.Add($DevicePowerSupplyModelProp.Name, $DevicePowerSupplyModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsDevicePowerSupplyModels {
                 $DevicePowerSupplyModelsArray
                 $DevicePowerSupplyModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DevicePowerSupplyModelId { 
+            DevicePowerSupplyModelId {
                 foreach ( $DPSMId in $DevicePowerSupplyModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsDevicePowerSupplyModels {
 
                         if ($Raw) {
                             $DevicePowerSupplyModelHash = [ordered]@{ }
-                            $DevicePowerSupplyModelProperties = $DevicePowerSupplyModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DevicePowerSupplyModelProperties = $DevicePowerSupplyModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DevicePowerSupplyModelProp in $DevicePowerSupplyModelProperties) {
                                 $DevicePowerSupplyModelHash.Add($DevicePowerSupplyModelProp.Name, $DevicePowerSupplyModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsDevicePowerSupplyModels {
                             $DevicePowerSupplyModelsArray.Add($object)
                         } else {
                             $DevicePowerSupplyModelHash = [ordered]@{ }
-                            $DevicePowerSupplyModelProperties = $DevicePowerSupplyModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DevicePowerSupplyModelProperties = $DevicePowerSupplyModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DevicePowerSupplyModelProp in $DevicePowerSupplyModelProperties) {
 
                                 $DevicePowerSupplyModelPropNewValue = Get-GlpiToolsParameters -Parameter $DevicePowerSupplyModelProp.Name -Value $DevicePowerSupplyModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsDevicePowerSupplyModels {
                     } Catch {
 
                         Write-Verbose -Message "Device Power Supply Model ID = $DPSMId is not found"
-                        
+
                     }
                     $DevicePowerSupplyModelsArray
                     $DevicePowerSupplyModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DevicePowerSupplyModelName { 
+            DevicePowerSupplyModelName {
                 Search-GlpiToolsItems -SearchFor DevicePowerSupplyModel -SearchType contains -SearchValue $DevicePowerSupplyModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DevicePowerSupplyModel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

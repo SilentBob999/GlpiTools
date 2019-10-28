@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsRequestSources -RequestSourceId 326
     Function gets RequestSourceId from GLPI which is provided through -RequestSourceId after Function type, and return Request Sources object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsRequestSources -RequestSourceId 326, 321
     Function gets Request Sources Id from GLPI which is provided through -RequestSourceId keyword after Function type (u can provide many ID's like that), and return Request Sources object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsRequestSources {
             ParameterSetName = "RequestSourceId")]
         [alias('RSID')]
         [string[]]$RequestSourceId,
+
+        [parameter(Mandatory = $false,
+        ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "RequestSourceId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "RequestSourceName")]
         [alias('RSN')]
-        [string]$RequestSourceName
+        [string]$RequestSourceName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsRequestSources {
 
         $RequestSourcesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsRequestSources {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/requesttype/?range=0-9999999999999"
                 }
-                
+
                 $RequestSourcesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($RequestSource in $RequestSourcesAll) {
                     $RequestSourceHash = [ordered]@{ }
-                    $RequestSourceProperties = $RequestSource.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $RequestSourceProperties = $RequestSource.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($RequestSourceProp in $RequestSourceProperties) {
                         $RequestSourceHash.Add($RequestSourceProp.Name, $RequestSourceProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsRequestSources {
                 $RequestSourcesArray
                 $RequestSourcesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            RequestSourceId { 
+            RequestSourceId {
                 foreach ( $RSId in $RequestSourceId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsRequestSources {
 
                         if ($Raw) {
                             $RequestSourceHash = [ordered]@{ }
-                            $RequestSourceProperties = $RequestSource.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $RequestSourceProperties = $RequestSource.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($RequestSourceProp in $RequestSourceProperties) {
                                 $RequestSourceHash.Add($RequestSourceProp.Name, $RequestSourceProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsRequestSources {
                             $RequestSourcesArray.Add($object)
                         } else {
                             $RequestSourceHash = [ordered]@{ }
-                            $RequestSourceProperties = $RequestSource.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $RequestSourceProperties = $RequestSource.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($RequestSourceProp in $RequestSourceProperties) {
 
                                 $RequestSourcePropNewValue = Get-GlpiToolsParameters -Parameter $RequestSourceProp.Name -Value $RequestSourceProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsRequestSources {
                     } Catch {
 
                         Write-Verbose -Message "Request Source ID = $RSId is not found"
-                        
+
                     }
                     $RequestSourcesArray
                     $RequestSourcesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            RequestSourceName { 
+            RequestSourceName {
                 Search-GlpiToolsItems -SearchFor requesttype -SearchType contains -SearchValue $RequestSourceName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Problem" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

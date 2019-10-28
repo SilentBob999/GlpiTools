@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsBlacklistedMailContent -BlacklistedMailContentId 326
     Function gets BlacklistedMailContentId from GLPI which is provided through -BlacklistedMailContentId after Function type, and return Blacklisted Mail Content object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsBlacklistedMailContent -BlacklistedMailContentId 326, 321
     Function gets Blacklisted Mail ContentId from GLPI which is provided through -Blacklisted Mail ContentId keyword after Function type (u can provide many ID's like that), and return Blacklisted Mail Content object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsBlacklistedMailContent {
             ParameterSetName = "BlacklistedMailContentId")]
         [alias('BMCID')]
         [string[]]$BlacklistedMailContentId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "BlacklistedMailContentId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "BlacklistedMailContentName")]
         [alias('BMCN')]
-        [string]$BlacklistedMailContentName
+        [string]$BlacklistedMailContentName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsBlacklistedMailContent {
 
         $BlacklistedMailContentArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsBlacklistedMailContent {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Blacklistedmailcontent/?range=0-9999999999999"
                 }
-                
+
                 $GlpiBlacklistedMailContentAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($BlacklistedMailContent in $GlpiBlacklistedMailContentAll) {
                     $BlacklistedMailContentHash = [ordered]@{ }
-                    $BlacklistedMailContentProperties = $BlacklistedMailContent.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $BlacklistedMailContentProperties = $BlacklistedMailContent.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($BlacklistedMailContentProp in $BlacklistedMailContentProperties) {
                         $BlacklistedMailContentHash.Add($BlacklistedMailContentProp.Name, $BlacklistedMailContentProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsBlacklistedMailContent {
                 $BlacklistedMailContentArray
                 $BlacklistedMailContentArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            BlacklistedMailContentId { 
+            BlacklistedMailContentId {
                 foreach ( $BMCId in $BlacklistedMailContentId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsBlacklistedMailContent {
 
                         if ($Raw) {
                             $BlacklistedMailContentHash = [ordered]@{ }
-                            $BlacklistedMailContentProperties = $BlacklistedMailContent.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $BlacklistedMailContentProperties = $BlacklistedMailContent.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($BlacklistedMailContentProp in $BlacklistedMailContentProperties) {
                                 $BlacklistedMailContentHash.Add($BlacklistedMailContentProp.Name, $BlacklistedMailContentProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsBlacklistedMailContent {
                             $BlacklistedMailContentArray.Add($object)
                         } else {
                             $BlacklistedMailContentHash = [ordered]@{ }
-                            $BlacklistedMailContentProperties = $BlacklistedMailContent.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $BlacklistedMailContentProperties = $BlacklistedMailContent.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($BlacklistedMailContentProp in $BlacklistedMailContentProperties) {
 
                                 $BlacklistedMailContentPropNewValue = Get-GlpiToolsParameters -Parameter $BlacklistedMailContentProp.Name -Value $BlacklistedMailContentProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsBlacklistedMailContent {
                     } Catch {
 
                         Write-Verbose -Message "Blacklisted Mail Content ID = $BMCId is not found"
-                        
+
                     }
                     $BlacklistedMailContentArray
                     $BlacklistedMailContentArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            BlacklistedMailContentName { 
+            BlacklistedMailContentName {
                 Search-GlpiToolsItems -SearchFor Blacklistedmailcontent -SearchType contains -SearchValue $BlacklistedMailContentName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Blacklistedmailcontent" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

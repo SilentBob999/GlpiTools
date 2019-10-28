@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsSolutionTemplates -SolutionTemplateId 326
     Function gets SolutionTemplateId from GLPI which is provided through -SolutionTemplateId after Function type, and return Solution Templates object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsSolutionTemplates -SolutionTemplateId 326, 321
     Function gets Solution Templates Id from GLPI which is provided through -SolutionTemplateId keyword after Function type (u can provide many ID's like that), and return Solution Templates object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsSolutionTemplates {
             ParameterSetName = "SolutionTemplateId")]
         [alias('STID')]
         [string[]]$SolutionTemplateId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "SolutionTemplateId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "SolutionTemplateName")]
         [alias('STN')]
-        [string]$SolutionTemplateName
+        [string]$SolutionTemplateName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsSolutionTemplates {
 
         $SolutionTemplatesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsSolutionTemplates {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/solutiontemplate/?range=0-9999999999999"
                 }
-                
+
                 $SolutionTemplatesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($SolutionTemplate in $SolutionTemplatesAll) {
                     $SolutionTemplateHash = [ordered]@{ }
-                    $SolutionTemplateProperties = $SolutionTemplate.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $SolutionTemplateProperties = $SolutionTemplate.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($SolutionTemplateProp in $SolutionTemplateProperties) {
                         $SolutionTemplateHash.Add($SolutionTemplateProp.Name, $SolutionTemplateProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsSolutionTemplates {
                 $SolutionTemplatesArray
                 $SolutionTemplatesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            SolutionTemplateId { 
+            SolutionTemplateId {
                 foreach ( $STId in $SolutionTemplateId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsSolutionTemplates {
 
                         if ($Raw) {
                             $SolutionTemplateHash = [ordered]@{ }
-                            $SolutionTemplateProperties = $SolutionTemplate.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $SolutionTemplateProperties = $SolutionTemplate.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($SolutionTemplateProp in $SolutionTemplateProperties) {
                                 $SolutionTemplateHash.Add($SolutionTemplateProp.Name, $SolutionTemplateProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsSolutionTemplates {
                             $SolutionTemplatesArray.Add($object)
                         } else {
                             $SolutionTemplateHash = [ordered]@{ }
-                            $SolutionTemplateProperties = $SolutionTemplate.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $SolutionTemplateProperties = $SolutionTemplate.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($SolutionTemplateProp in $SolutionTemplateProperties) {
 
                                 $SolutionTemplatePropNewValue = Get-GlpiToolsParameters -Parameter $SolutionTemplateProp.Name -Value $SolutionTemplateProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsSolutionTemplates {
                     } Catch {
 
                         Write-Verbose -Message "Solution Template ID = $STId is not found"
-                        
+
                     }
                     $SolutionTemplatesArray
                     $SolutionTemplatesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            SolutionTemplateName { 
+            SolutionTemplateName {
                 Search-GlpiToolsItems -SearchFor solutiontemplate -SearchType contains -SearchValue $SolutionTemplateName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "solutiontemplate" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

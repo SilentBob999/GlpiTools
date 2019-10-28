@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsProjectTypes -ProjectTypeId 326
     Function gets ProjectTypeId from GLPI which is provided through -ProjectTypeId after Function type, and return Project Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsProjectTypes -ProjectTypeId 326, 321
     Function gets Project Types Id from GLPI which is provided through -ProjectTypeId keyword after Function type (u can provide many ID's like that), and return Project Types object
 .EXAMPLE
@@ -53,18 +53,27 @@ function Get-GlpiToolsDropdownsProjectTypes {
             ParameterSetName = "ProjectTypeId")]
         [alias('PTID')]
         [string[]]$ProjectTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ProjectTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "ProjectTypeName")]
         [alias('PTN')]
-        [string]$ProjectTypeName
+        [string]$ProjectTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
+
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +85,10 @@ function Get-GlpiToolsDropdownsProjectTypes {
 
         $ProjectTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +98,13 @@ function Get-GlpiToolsDropdownsProjectTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/projecttype/?range=0-9999999999999"
                 }
-                
+
                 $ProjectTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($ProjectType in $ProjectTypesAll) {
                     $ProjectTypeHash = [ordered]@{ }
-                    $ProjectTypeProperties = $ProjectType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $ProjectTypeProperties = $ProjectType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($ProjectTypeProp in $ProjectTypeProperties) {
                         $ProjectTypeHash.Add($ProjectTypeProp.Name, $ProjectTypeProp.Value)
                     }
@@ -105,7 +114,7 @@ function Get-GlpiToolsDropdownsProjectTypes {
                 $ProjectTypesArray
                 $ProjectTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ProjectTypeId { 
+            ProjectTypeId {
                 foreach ( $PTId in $ProjectTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +131,8 @@ function Get-GlpiToolsDropdownsProjectTypes {
 
                         if ($Raw) {
                             $ProjectTypeHash = [ordered]@{ }
-                            $ProjectTypeProperties = $ProjectType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ProjectTypeProperties = $ProjectType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ProjectTypeProp in $ProjectTypeProperties) {
                                 $ProjectTypeHash.Add($ProjectTypeProp.Name, $ProjectTypeProp.Value)
                             }
@@ -131,8 +140,8 @@ function Get-GlpiToolsDropdownsProjectTypes {
                             $ProjectTypesArray.Add($object)
                         } else {
                             $ProjectTypeHash = [ordered]@{ }
-                            $ProjectTypeProperties = $ProjectType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ProjectTypeProperties = $ProjectType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ProjectTypeProp in $ProjectTypeProperties) {
 
                                 $ProjectTypePropNewValue = Get-GlpiToolsParameters -Parameter $ProjectTypeProp.Name -Value $ProjectTypeProp.Value
@@ -145,19 +154,22 @@ function Get-GlpiToolsDropdownsProjectTypes {
                     } Catch {
 
                         Write-Verbose -Message "Project Type ID = $PTId is not found"
-                        
+
                     }
                     $ProjectTypesArray
                     $ProjectTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ProjectTypeName { 
+            ProjectTypeName {
                 Search-GlpiToolsItems -SearchFor projecttype -SearchType contains -SearchValue $ProjectTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Problem" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceSoundCardModels -DeviceSoundCardModelId 326
     Function gets DeviceSoundCardModelId from GLPI which is provided through -DeviceSoundCardModelId after Function type, and return Device Sound Card Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceSoundCardModels -DeviceSoundCardModelId 326, 321
     Function gets Device Sound Card Models Id from GLPI which is provided through -DeviceSoundCardModelId keyword after Function type (u can provide many ID's like that), and return Device Sound Card Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsDeviceSoundCardModels {
             ParameterSetName = "DeviceSoundCardModelId")]
         [alias('DSCMID')]
         [string[]]$DeviceSoundCardModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DeviceSoundCardModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DeviceSoundCardModelName")]
         [alias('DSCMN')]
-        [string]$DeviceSoundCardModelName
+        [string]$DeviceSoundCardModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsDeviceSoundCardModels {
 
         $DeviceSoundCardModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsDeviceSoundCardModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/DeviceSoundCardModel/?range=0-9999999999999"
                 }
-                
+
                 $DeviceSoundCardModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DeviceSoundCardModel in $DeviceSoundCardModelsAll) {
                     $DeviceSoundCardModelHash = [ordered]@{ }
-                    $DeviceSoundCardModelProperties = $DeviceSoundCardModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DeviceSoundCardModelProperties = $DeviceSoundCardModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DeviceSoundCardModelProp in $DeviceSoundCardModelProperties) {
                         $DeviceSoundCardModelHash.Add($DeviceSoundCardModelProp.Name, $DeviceSoundCardModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsDeviceSoundCardModels {
                 $DeviceSoundCardModelsArray
                 $DeviceSoundCardModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DeviceSoundCardModelId { 
+            DeviceSoundCardModelId {
                 foreach ( $DSCMId in $DeviceSoundCardModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsDeviceSoundCardModels {
 
                         if ($Raw) {
                             $DeviceSoundCardModelHash = [ordered]@{ }
-                            $DeviceSoundCardModelProperties = $DeviceSoundCardModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceSoundCardModelProperties = $DeviceSoundCardModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceSoundCardModelProp in $DeviceSoundCardModelProperties) {
                                 $DeviceSoundCardModelHash.Add($DeviceSoundCardModelProp.Name, $DeviceSoundCardModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsDeviceSoundCardModels {
                             $DeviceSoundCardModelsArray.Add($object)
                         } else {
                             $DeviceSoundCardModelHash = [ordered]@{ }
-                            $DeviceSoundCardModelProperties = $DeviceSoundCardModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceSoundCardModelProperties = $DeviceSoundCardModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceSoundCardModelProp in $DeviceSoundCardModelProperties) {
 
                                 $DeviceSoundCardModelPropNewValue = Get-GlpiToolsParameters -Parameter $DeviceSoundCardModelProp.Name -Value $DeviceSoundCardModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsDeviceSoundCardModels {
                     } Catch {
 
                         Write-Verbose -Message "Device Sound Card Model ID = $DSCMId is not found"
-                        
+
                     }
                     $DeviceSoundCardModelsArray
                     $DeviceSoundCardModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DeviceSoundCardModelName { 
+            DeviceSoundCardModelName {
                 Search-GlpiToolsItems -SearchFor DeviceSoundCardModel -SearchType contains -SearchValue $DeviceSoundCardModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceSoundCardModel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

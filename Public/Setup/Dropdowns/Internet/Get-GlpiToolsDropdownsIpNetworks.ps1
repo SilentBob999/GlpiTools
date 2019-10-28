@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsIpNetworks -IpNetworkId 326
     Function gets IpNetworkId from GLPI which is provided through -IpNetworkId after Function type, and return Ip Networks object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsIpNetworks -IpNetworkId 326, 321
     Function gets Ip Networks Id from GLPI which is provided through -IpNetworkId keyword after Function type (u can provide many ID's like that), and return Ip Networks object
 .EXAMPLE
@@ -53,18 +53,27 @@ function Get-GlpiToolsDropdownsIpNetworks {
             ParameterSetName = "IpNetworkId")]
         [alias('INID')]
         [string[]]$IpNetworkId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "IpNetworkId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "IpNetworkName")]
         [alias('INN')]
-        [string]$IpNetworkName
+        [string]$IpNetworkName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
+
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +85,10 @@ function Get-GlpiToolsDropdownsIpNetworks {
 
         $IpNetworksArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +98,13 @@ function Get-GlpiToolsDropdownsIpNetworks {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/ipnetwork/?range=0-9999999999999"
                 }
-                
+
                 $IpNetworksAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($IpNetwork in $IpNetworksAll) {
                     $IpNetworkHash = [ordered]@{ }
-                    $IpNetworkProperties = $IpNetwork.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $IpNetworkProperties = $IpNetwork.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($IpNetworkProp in $IpNetworkProperties) {
                         $IpNetworkHash.Add($IpNetworkProp.Name, $IpNetworkProp.Value)
                     }
@@ -105,7 +114,7 @@ function Get-GlpiToolsDropdownsIpNetworks {
                 $IpNetworksArray
                 $IpNetworksArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            IpNetworkId { 
+            IpNetworkId {
                 foreach ( $INId in $IpNetworkId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +131,8 @@ function Get-GlpiToolsDropdownsIpNetworks {
 
                         if ($Raw) {
                             $IpNetworkHash = [ordered]@{ }
-                            $IpNetworkProperties = $IpNetwork.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $IpNetworkProperties = $IpNetwork.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($IpNetworkProp in $IpNetworkProperties) {
                                 $IpNetworkHash.Add($IpNetworkProp.Name, $IpNetworkProp.Value)
                             }
@@ -131,8 +140,8 @@ function Get-GlpiToolsDropdownsIpNetworks {
                             $IpNetworksArray.Add($object)
                         } else {
                             $IpNetworkHash = [ordered]@{ }
-                            $IpNetworkProperties = $IpNetwork.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $IpNetworkProperties = $IpNetwork.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($IpNetworkProp in $IpNetworkProperties) {
 
                                 $IpNetworkPropNewValue = Get-GlpiToolsParameters -Parameter $IpNetworkProp.Name -Value $IpNetworkProp.Value
@@ -145,19 +154,22 @@ function Get-GlpiToolsDropdownsIpNetworks {
                     } Catch {
 
                         Write-Verbose -Message "Ip Network ID = $INId is not found"
-                        
+
                     }
                     $IpNetworksArray
                     $IpNetworksArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            IpNetworkName { 
+            IpNetworkName {
                 Search-GlpiToolsItems -SearchFor ipnetwork -SearchType contains -SearchValue $IpNetworkName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "ipnetwork" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

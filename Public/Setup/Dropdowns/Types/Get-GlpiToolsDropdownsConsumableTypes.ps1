@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsConsumableTypes -ConsumableTypeId 326
     Function gets ConsumableTypeId from GLPI which is provided through -ConsumableTypeId after Function type, and return Consumable Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsConsumableTypes -ConsumableTypeId 326, 321
     Function gets Consumable Types Id from GLPI which is provided through -ConsumableTypeId keyword after Function type (u can provide many ID's like that), and return Consumable Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsConsumableTypes {
             ParameterSetName = "ConsumableTypeId")]
         [alias('CTID')]
         [string[]]$ConsumableTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ConsumableTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "ConsumableTypeName")]
         [alias('CTN')]
-        [string]$ConsumableTypeName
+        [string]$ConsumableTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsConsumableTypes {
 
         $ConsumableTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsConsumableTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/consumableitemtype/?range=0-9999999999999"
                 }
-                
+
                 $ConsumableTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($ConsumableType in $ConsumableTypesAll) {
                     $ConsumableTypeHash = [ordered]@{ }
-                    $ConsumableTypeProperties = $ConsumableType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $ConsumableTypeProperties = $ConsumableType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($ConsumableTypeProp in $ConsumableTypeProperties) {
                         $ConsumableTypeHash.Add($ConsumableTypeProp.Name, $ConsumableTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsConsumableTypes {
                 $ConsumableTypesArray
                 $ConsumableTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ConsumableTypeId { 
+            ConsumableTypeId {
                 foreach ( $CTId in $ConsumableTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsConsumableTypes {
 
                         if ($Raw) {
                             $ConsumableTypeHash = [ordered]@{ }
-                            $ConsumableTypeProperties = $ConsumableType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ConsumableTypeProperties = $ConsumableType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ConsumableTypeProp in $ConsumableTypeProperties) {
                                 $ConsumableTypeHash.Add($ConsumableTypeProp.Name, $ConsumableTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsConsumableTypes {
                             $ConsumableTypesArray.Add($object)
                         } else {
                             $ConsumableTypeHash = [ordered]@{ }
-                            $ConsumableTypeProperties = $ConsumableType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ConsumableTypeProperties = $ConsumableType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ConsumableTypeProp in $ConsumableTypeProperties) {
 
                                 $ConsumableTypePropNewValue = Get-GlpiToolsParameters -Parameter $ConsumableTypeProp.Name -Value $ConsumableTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsConsumableTypes {
                     } Catch {
 
                         Write-Verbose -Message "Consumable Type ID = $CTId is not found"
-                        
+
                     }
                     $ConsumableTypesArray
                     $ConsumableTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ConsumableTypeName { 
+            ConsumableTypeName {
                 Search-GlpiToolsItems -SearchFor consumableitemtype -SearchType contains -SearchValue $ConsumableTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "consumableitemtype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

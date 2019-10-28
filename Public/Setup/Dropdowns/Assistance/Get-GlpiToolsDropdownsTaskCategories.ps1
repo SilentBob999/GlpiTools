@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsTaskCategories -TaskCategoryId 326
     Function gets TaskCategoryId from GLPI which is provided through -TaskCategoryId after Function type, and return Task Categories object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsTaskCategories -TaskCategoryId 326, 321
     Function gets Task Categories Id from GLPI which is provided through -TaskCategoryId keyword after Function type (u can provide many ID's like that), and return Task Categories object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsTaskCategories {
             ParameterSetName = "TaskCategoryId")]
         [alias('TCID')]
         [string[]]$TaskCategoryId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "TaskCategoryId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "TaskCategoryName")]
         [alias('TCN')]
-        [string]$TaskCategoryName
+        [string]$TaskCategoryName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsTaskCategories {
 
         $TaskCategoriesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsTaskCategories {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/taskcategory/?range=0-9999999999999"
                 }
-                
+
                 $TaskCategoriesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($TaskCategory in $TaskCategoriesAll) {
                     $TaskCategoryHash = [ordered]@{ }
-                    $TaskCategoryProperties = $TaskCategory.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $TaskCategoryProperties = $TaskCategory.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($TaskCategoryProp in $TaskCategoryProperties) {
                         $TaskCategoryHash.Add($TaskCategoryProp.Name, $TaskCategoryProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsTaskCategories {
                 $TaskCategoriesArray
                 $TaskCategoriesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            TaskCategoryId { 
+            TaskCategoryId {
                 foreach ( $TCId in $TaskCategoryId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsTaskCategories {
 
                         if ($Raw) {
                             $TaskCategoryHash = [ordered]@{ }
-                            $TaskCategoryProperties = $TaskCategory.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $TaskCategoryProperties = $TaskCategory.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($TaskCategoryProp in $TaskCategoryProperties) {
                                 $TaskCategoryHash.Add($TaskCategoryProp.Name, $TaskCategoryProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsTaskCategories {
                             $TaskCategoriesArray.Add($object)
                         } else {
                             $TaskCategoryHash = [ordered]@{ }
-                            $TaskCategoryProperties = $TaskCategory.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $TaskCategoryProperties = $TaskCategory.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($TaskCategoryProp in $TaskCategoryProperties) {
 
                                 $TaskCategoryPropNewValue = Get-GlpiToolsParameters -Parameter $TaskCategoryProp.Name -Value $TaskCategoryProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsTaskCategories {
                     } Catch {
 
                         Write-Verbose -Message "Task Category ID = $TCId is not found"
-                        
+
                     }
                     $TaskCategoriesArray
                     $TaskCategoriesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            TaskCategoryName { 
+            TaskCategoryName {
                 Search-GlpiToolsItems -SearchFor taskcategory -SearchType contains -SearchValue $TaskCategoryName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "taskcategory" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

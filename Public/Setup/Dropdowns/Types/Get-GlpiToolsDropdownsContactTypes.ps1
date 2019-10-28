@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsContactTypes -ContactTypeId 326
     Function gets ContactTypeId from GLPI which is provided through -ContactTypeId after Function type, and return Contact Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsContactTypes -ContactTypeId 326, 321
     Function gets Contact Types Id from GLPI which is provided through -ContactTypeId keyword after Function type (u can provide many ID's like that), and return Contact Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsContactTypes {
             ParameterSetName = "ContactTypeId")]
         [alias('CTID')]
         [string[]]$ContactTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ContactTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "ContactTypeName")]
         [alias('CTN')]
-        [string]$ContactTypeName
+        [string]$ContactTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsContactTypes {
 
         $ContactTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsContactTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/contacttype/?range=0-9999999999999"
                 }
-                
+
                 $ContactTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($ContactType in $ContactTypesAll) {
                     $ContactTypeHash = [ordered]@{ }
-                    $ContactTypeProperties = $ContactType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $ContactTypeProperties = $ContactType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($ContactTypeProp in $ContactTypeProperties) {
                         $ContactTypeHash.Add($ContactTypeProp.Name, $ContactTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsContactTypes {
                 $ContactTypesArray
                 $ContactTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ContactTypeId { 
+            ContactTypeId {
                 foreach ( $CTId in $ContactTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsContactTypes {
 
                         if ($Raw) {
                             $ContactTypeHash = [ordered]@{ }
-                            $ContactTypeProperties = $ContactType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ContactTypeProperties = $ContactType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ContactTypeProp in $ContactTypeProperties) {
                                 $ContactTypeHash.Add($ContactTypeProp.Name, $ContactTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsContactTypes {
                             $ContactTypesArray.Add($object)
                         } else {
                             $ContactTypeHash = [ordered]@{ }
-                            $ContactTypeProperties = $ContactType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ContactTypeProperties = $ContactType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ContactTypeProp in $ContactTypeProperties) {
 
                                 $ContactTypePropNewValue = Get-GlpiToolsParameters -Parameter $ContactTypeProp.Name -Value $ContactTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsContactTypes {
                     } Catch {
 
                         Write-Verbose -Message "Contact Type ID = $CTId is not found"
-                        
+
                     }
                     $ContactTypesArray
                     $ContactTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ContactTypeName { 
+            ContactTypeName {
                 Search-GlpiToolsItems -SearchFor contacttype -SearchType contains -SearchValue $ContactTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "contacttype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

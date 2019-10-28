@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDocumentHeadings -DocumentHeadingId 326
     Function gets DocumentHeadingId from GLPI which is provided through -DocumentHeadingId after Function type, and return Document headings object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDocumentHeadings -DocumentHeadingId 326, 321
     Function gets Document headings Id from GLPI which is provided through -DocumentHeadingId keyword after Function type (u can provide many ID's like that), and return Document headings object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsDocumentHeadings {
             ParameterSetName = "DocumentHeadingId")]
         [alias('DHID')]
         [string[]]$DocumentHeadingId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DocumentHeadingId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DocumentHeadingName")]
         [alias('DHN')]
-        [string]$DocumentHeadingName
+        [string]$DocumentHeadingName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsDocumentHeadings {
 
         $DocumentHeadingsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsDocumentHeadings {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/documentcategory/?range=0-9999999999999"
                 }
-                
+
                 $DocumentHeadingsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DocumentHeading in $DocumentHeadingsAll) {
                     $DocumentHeadingHash = [ordered]@{ }
-                    $DocumentHeadingProperties = $DocumentHeading.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DocumentHeadingProperties = $DocumentHeading.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DocumentHeadingProp in $DocumentHeadingProperties) {
                         $DocumentHeadingHash.Add($DocumentHeadingProp.Name, $DocumentHeadingProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsDocumentHeadings {
                 $DocumentHeadingsArray
                 $DocumentHeadingsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DocumentHeadingId { 
+            DocumentHeadingId {
                 foreach ( $DHId in $DocumentHeadingId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsDocumentHeadings {
 
                         if ($Raw) {
                             $DocumentHeadingHash = [ordered]@{ }
-                            $DocumentHeadingProperties = $DocumentHeading.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DocumentHeadingProperties = $DocumentHeading.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DocumentHeadingProp in $DocumentHeadingProperties) {
                                 $DocumentHeadingHash.Add($DocumentHeadingProp.Name, $DocumentHeadingProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsDocumentHeadings {
                             $DocumentHeadingsArray.Add($object)
                         } else {
                             $DocumentHeadingHash = [ordered]@{ }
-                            $DocumentHeadingProperties = $DocumentHeading.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DocumentHeadingProperties = $DocumentHeading.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DocumentHeadingProp in $DocumentHeadingProperties) {
 
                                 $DocumentHeadingPropNewValue = Get-GlpiToolsParameters -Parameter $DocumentHeadingProp.Name -Value $DocumentHeadingProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsDocumentHeadings {
                     } Catch {
 
                         Write-Verbose -Message "Document Heading ID = $DHId is not found"
-                        
+
                     }
                     $DocumentHeadingsArray
                     $DocumentHeadingsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DocumentHeadingName { 
+            DocumentHeadingName {
                 Search-GlpiToolsItems -SearchFor documentcategory -SearchType contains -SearchValue $DocumentHeadingName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "documentcategory" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

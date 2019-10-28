@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsPhonesPowerSupplyTypes -PhonePowerSupplyTypeId 326
     Function gets PhonePowerSupplyTypeId from GLPI which is provided through -PhonePowerSupplyTypeId after Function type, and return Phones Power Supply Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsPhonesPowerSupplyTypes -PhonePowerSupplyTypeId 326, 321
     Function gets Phones Power Supply Types Id from GLPI which is provided through -PhonePowerSupplyTypeId keyword after Function type (u can provide many ID's like that), and return Phones Power Supply Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsPhonesPowerSupplyTypes {
             ParameterSetName = "PhonePowerSupplyTypeId")]
         [alias('PPSTID')]
         [string[]]$PhonePowerSupplyTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "PhonePowerSupplyTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "PhonePowerSupplyTypeName")]
         [alias('PPSTN')]
-        [string]$PhonePowerSupplyTypeName
+        [string]$PhonePowerSupplyTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsPhonesPowerSupplyTypes {
 
         $PhonesPowerSupplyTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsPhonesPowerSupplyTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/phonepowersupply/?range=0-9999999999999"
                 }
-                
+
                 $PhonesPowerSupplyTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($PhonePowerSupplyType in $PhonesPowerSupplyTypesAll) {
                     $PhonePowerSupplyTypeHash = [ordered]@{ }
-                    $PhonePowerSupplyTypeProperties = $PhonePowerSupplyType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $PhonePowerSupplyTypeProperties = $PhonePowerSupplyType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($PhonePowerSupplyTypeProp in $PhonePowerSupplyTypeProperties) {
                         $PhonePowerSupplyTypeHash.Add($PhonePowerSupplyTypeProp.Name, $PhonePowerSupplyTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsPhonesPowerSupplyTypes {
                 $PhonesPowerSupplyTypesArray
                 $PhonesPowerSupplyTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            PhonePowerSupplyTypeId { 
+            PhonePowerSupplyTypeId {
                 foreach ( $PPSTId in $PhonePowerSupplyTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsPhonesPowerSupplyTypes {
 
                         if ($Raw) {
                             $PhonePowerSupplyTypeHash = [ordered]@{ }
-                            $PhonePowerSupplyTypeProperties = $PhonePowerSupplyType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PhonePowerSupplyTypeProperties = $PhonePowerSupplyType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PhonePowerSupplyTypeProp in $PhonePowerSupplyTypeProperties) {
                                 $PhonePowerSupplyTypeHash.Add($PhonePowerSupplyTypeProp.Name, $PhonePowerSupplyTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsPhonesPowerSupplyTypes {
                             $PhonesPowerSupplyTypesArray.Add($object)
                         } else {
                             $PhonePowerSupplyTypeHash = [ordered]@{ }
-                            $PhonePowerSupplyTypeProperties = $PhonePowerSupplyType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PhonePowerSupplyTypeProperties = $PhonePowerSupplyType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PhonePowerSupplyTypeProp in $PhonePowerSupplyTypeProperties) {
 
                                 $PhonePowerSupplyTypePropNewValue = Get-GlpiToolsParameters -Parameter $PhonePowerSupplyTypeProp.Name -Value $PhonePowerSupplyTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsPhonesPowerSupplyTypes {
                     } Catch {
 
                         Write-Verbose -Message "Phone Power Supply Type ID = $PPSTId is not found"
-                        
+
                     }
                     $PhonesPowerSupplyTypesArray
                     $PhonesPowerSupplyTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            PhonePowerSupplyTypeName { 
+            PhonePowerSupplyTypeName {
                 Search-GlpiToolsItems -SearchFor phonepowersupply -SearchType contains -SearchValue $PhonePowerSupplyTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "phonepowersupply" -SearchText $SearchText -raw $Raw
+
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

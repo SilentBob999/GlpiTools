@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceProcessorModels -DeviceProcessorModelId 326
     Function gets DeviceProcessorModelId from GLPI which is provided through -DeviceProcessorModelId after Function type, and return Device Processor Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceProcessorModels -DeviceProcessorModelId 326, 321
     Function gets Device Processor Models Id from GLPI which is provided through -DeviceProcessorModelId keyword after Function type (u can provide many ID's like that), and return Device Processor Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsDeviceProcessorModels {
             ParameterSetName = "DeviceProcessorModelId")]
         [alias('DPMID')]
         [string[]]$DeviceProcessorModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DeviceProcessorModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DeviceProcessorModelName")]
         [alias('DPMN')]
-        [string]$DeviceProcessorModelName
+        [string]$DeviceProcessorModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsDeviceProcessorModels {
 
         $DeviceProcessorModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsDeviceProcessorModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/DeviceProcessorModel/?range=0-9999999999999"
                 }
-                
+
                 $DeviceProcessorModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DeviceProcessorModel in $DeviceProcessorModelsAll) {
                     $DeviceProcessorModelHash = [ordered]@{ }
-                    $DeviceProcessorModelProperties = $DeviceProcessorModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DeviceProcessorModelProperties = $DeviceProcessorModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DeviceProcessorModelProp in $DeviceProcessorModelProperties) {
                         $DeviceProcessorModelHash.Add($DeviceProcessorModelProp.Name, $DeviceProcessorModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsDeviceProcessorModels {
                 $DeviceProcessorModelsArray
                 $DeviceProcessorModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DeviceProcessorModelId { 
+            DeviceProcessorModelId {
                 foreach ( $DPMId in $DeviceProcessorModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsDeviceProcessorModels {
 
                         if ($Raw) {
                             $DeviceProcessorModelHash = [ordered]@{ }
-                            $DeviceProcessorModelProperties = $DeviceProcessorModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceProcessorModelProperties = $DeviceProcessorModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceProcessorModelProp in $DeviceProcessorModelProperties) {
                                 $DeviceProcessorModelHash.Add($DeviceProcessorModelProp.Name, $DeviceProcessorModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsDeviceProcessorModels {
                             $DeviceProcessorModelsArray.Add($object)
                         } else {
                             $DeviceProcessorModelHash = [ordered]@{ }
-                            $DeviceProcessorModelProperties = $DeviceProcessorModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceProcessorModelProperties = $DeviceProcessorModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceProcessorModelProp in $DeviceProcessorModelProperties) {
 
                                 $DeviceProcessorModelPropNewValue = Get-GlpiToolsParameters -Parameter $DeviceProcessorModelProp.Name -Value $DeviceProcessorModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsDeviceProcessorModels {
                     } Catch {
 
                         Write-Verbose -Message "Device Processor Model ID = $DPMId is not found"
-                        
+
                     }
                     $DeviceProcessorModelsArray
                     $DeviceProcessorModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DeviceProcessorModelName { 
+            DeviceProcessorModelName {
                 Search-GlpiToolsItems -SearchFor DeviceProcessorModel -SearchType contains -SearchValue $DeviceProcessorModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceProcessorModel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

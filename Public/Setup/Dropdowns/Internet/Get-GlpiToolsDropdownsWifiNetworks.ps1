@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsWifiNetworks -WifiNetworkId 326
     Function gets WifiNetworkId from GLPI which is provided through -WifiNetworkId after Function type, and return Wifi Networks object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsWifiNetworks -WifiNetworkId 326, 321
     Function gets Wifi Networks Id from GLPI which is provided through -WifiNetworkId keyword after Function type (u can provide many ID's like that), and return Wifi Networks object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsWifiNetworks {
             ParameterSetName = "WifiNetworkId")]
         [alias('WNID')]
         [string[]]$WifiNetworkId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "WifiNetworkId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "WifiNetworkName")]
         [alias('WNN')]
-        [string]$WifiNetworkName
+        [string]$WifiNetworkName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsWifiNetworks {
 
         $WifiNetworksArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsWifiNetworks {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/wifinetwork/?range=0-9999999999999"
                 }
-                
+
                 $WifiNetworksAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($WifiNetwork in $WifiNetworksAll) {
                     $WifiNetworkHash = [ordered]@{ }
-                    $WifiNetworkProperties = $WifiNetwork.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $WifiNetworkProperties = $WifiNetwork.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($WifiNetworkProp in $WifiNetworkProperties) {
                         $WifiNetworkHash.Add($WifiNetworkProp.Name, $WifiNetworkProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsWifiNetworks {
                 $WifiNetworksArray
                 $WifiNetworksArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            WifiNetworkId { 
+            WifiNetworkId {
                 foreach ( $WNId in $WifiNetworkId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsWifiNetworks {
 
                         if ($Raw) {
                             $WifiNetworkHash = [ordered]@{ }
-                            $WifiNetworkProperties = $WifiNetwork.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $WifiNetworkProperties = $WifiNetwork.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($WifiNetworkProp in $WifiNetworkProperties) {
                                 $WifiNetworkHash.Add($WifiNetworkProp.Name, $WifiNetworkProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsWifiNetworks {
                             $WifiNetworksArray.Add($object)
                         } else {
                             $WifiNetworkHash = [ordered]@{ }
-                            $WifiNetworkProperties = $WifiNetwork.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $WifiNetworkProperties = $WifiNetwork.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($WifiNetworkProp in $WifiNetworkProperties) {
 
                                 $WifiNetworkPropNewValue = Get-GlpiToolsParameters -Parameter $WifiNetworkProp.Name -Value $WifiNetworkProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsWifiNetworks {
                     } Catch {
 
                         Write-Verbose -Message "Wifi Network ID = $WNId is not found"
-                        
+
                     }
                     $WifiNetworksArray
                     $WifiNetworksArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            WifiNetworkName { 
+            WifiNetworkName {
                 Search-GlpiToolsItems -SearchFor wifinetwork -SearchType contains -SearchValue $WifiNetworkName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "wifinetwork" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

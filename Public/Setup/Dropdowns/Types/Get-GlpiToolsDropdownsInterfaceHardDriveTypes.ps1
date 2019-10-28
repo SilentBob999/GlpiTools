@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsInterfaceHardDriveTypes -InterfaceHardDriveTypeId 326
     Function gets InterfaceHardDriveTypeId from GLPI which is provided through -InterfaceHardDriveTypeId after Function type, and return Interface Hard Drive Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsInterfaceHardDriveTypes -InterfaceHardDriveTypeId 326, 321
     Function gets Interface Hard Drive Types Id from GLPI which is provided through -InterfaceHardDriveTypeId keyword after Function type (u can provide many ID's like that), and return Interface Hard Drive Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsInterfaceHardDriveTypes {
             ParameterSetName = "InterfaceHardDriveTypeId")]
         [alias('IHDTID')]
         [string[]]$InterfaceHardDriveTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "InterfaceHardDriveTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "InterfaceHardDriveTypeName")]
         [alias('IHDTN')]
-        [string]$InterfaceHardDriveTypeName
+        [string]$InterfaceHardDriveTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsInterfaceHardDriveTypes {
 
         $InterfaceHardDriveTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsInterfaceHardDriveTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/interfacetype/?range=0-9999999999999"
                 }
-                
+
                 $InterfaceHardDriveTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($InterfaceHardDriveType in $InterfaceHardDriveTypesAll) {
                     $InterfaceHardDriveTypeHash = [ordered]@{ }
-                    $InterfaceHardDriveTypeProperties = $InterfaceHardDriveType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $InterfaceHardDriveTypeProperties = $InterfaceHardDriveType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($InterfaceHardDriveTypeProp in $InterfaceHardDriveTypeProperties) {
                         $InterfaceHardDriveTypeHash.Add($InterfaceHardDriveTypeProp.Name, $InterfaceHardDriveTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsInterfaceHardDriveTypes {
                 $InterfaceHardDriveTypesArray
                 $InterfaceHardDriveTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            InterfaceHardDriveTypeId { 
+            InterfaceHardDriveTypeId {
                 foreach ( $IHDTId in $InterfaceHardDriveTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsInterfaceHardDriveTypes {
 
                         if ($Raw) {
                             $InterfaceHardDriveTypeHash = [ordered]@{ }
-                            $InterfaceHardDriveTypeProperties = $InterfaceHardDriveType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $InterfaceHardDriveTypeProperties = $InterfaceHardDriveType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($InterfaceHardDriveTypeProp in $InterfaceHardDriveTypeProperties) {
                                 $InterfaceHardDriveTypeHash.Add($InterfaceHardDriveTypeProp.Name, $InterfaceHardDriveTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsInterfaceHardDriveTypes {
                             $InterfaceHardDriveTypesArray.Add($object)
                         } else {
                             $InterfaceHardDriveTypeHash = [ordered]@{ }
-                            $InterfaceHardDriveTypeProperties = $InterfaceHardDriveType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $InterfaceHardDriveTypeProperties = $InterfaceHardDriveType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($InterfaceHardDriveTypeProp in $InterfaceHardDriveTypeProperties) {
 
                                 $InterfaceHardDriveTypePropNewValue = Get-GlpiToolsParameters -Parameter $InterfaceHardDriveTypeProp.Name -Value $InterfaceHardDriveTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsInterfaceHardDriveTypes {
                     } Catch {
 
                         Write-Verbose -Message "Interface Hard Drive Type ID = $IHDTId is not found"
-                        
+
                     }
                     $InterfaceHardDriveTypesArray
                     $InterfaceHardDriveTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            InterfaceHardDriveTypeName { 
+            InterfaceHardDriveTypeName {
                 Search-GlpiToolsItems -SearchFor interfacetype -SearchType contains -SearchValue $InterfaceHardDriveTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "interfacetype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

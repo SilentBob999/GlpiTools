@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsLineTypes -LineTypeId 326
     Function gets LineTypeId from GLPI which is provided through -LineTypeId after Function type, and return Line Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsLineTypes -LineTypeId 326, 321
     Function gets Line Types Id from GLPI which is provided through -LineTypeId keyword after Function type (u can provide many ID's like that), and return Line Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsLineTypes {
             ParameterSetName = "LineTypeId")]
         [alias('LTID')]
         [string[]]$LineTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "LineTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "LineTypeName")]
         [alias('LTN')]
-        [string]$LineTypeName
+        [string]$LineTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsLineTypes {
 
         $LineTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsLineTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Linetype/?range=0-9999999999999"
                 }
-                
+
                 $LineTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($LineType in $LineTypesAll) {
                     $LineTypeHash = [ordered]@{ }
-                    $LineTypeProperties = $LineType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $LineTypeProperties = $LineType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($LineTypeProp in $LineTypeProperties) {
                         $LineTypeHash.Add($LineTypeProp.Name, $LineTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsLineTypes {
                 $LineTypesArray
                 $LineTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            LineTypeId { 
+            LineTypeId {
                 foreach ( $LTId in $LineTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsLineTypes {
 
                         if ($Raw) {
                             $LineTypeHash = [ordered]@{ }
-                            $LineTypeProperties = $LineType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $LineTypeProperties = $LineType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($LineTypeProp in $LineTypeProperties) {
                                 $LineTypeHash.Add($LineTypeProp.Name, $LineTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsLineTypes {
                             $LineTypesArray.Add($object)
                         } else {
                             $LineTypeHash = [ordered]@{ }
-                            $LineTypeProperties = $LineType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $LineTypeProperties = $LineType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($LineTypeProp in $LineTypeProperties) {
 
                                 $LineTypePropNewValue = Get-GlpiToolsParameters -Parameter $LineTypeProp.Name -Value $LineTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsLineTypes {
                     } Catch {
 
                         Write-Verbose -Message "Line Type ID = $LTId is not found"
-                        
+
                     }
                     $LineTypesArray
                     $LineTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            LineTypeName { 
+            LineTypeName {
                 Search-GlpiToolsItems -SearchFor Linetype -SearchType contains -SearchValue $LineTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Linetype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

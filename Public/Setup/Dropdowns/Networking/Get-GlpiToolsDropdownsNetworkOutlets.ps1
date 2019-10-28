@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsNetworkOutlets -NetworkOutletId 326
     Function gets NetworkOutletId from GLPI which is provided through -NetworkOutletId after Function type, and return Network Outlets object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsNetworkOutlets -NetworkOutletId 326, 321
     Function gets Network Outlets Id from GLPI which is provided through -NetworkOutletId keyword after Function type (u can provide many ID's like that), and return Network Outlets object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsNetworkOutlets {
             ParameterSetName = "NetworkOutletId")]
         [alias('NOID')]
         [string[]]$NetworkOutletId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "NetworkOutletId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "NetworkOutletName")]
         [alias('NON')]
-        [string]$NetworkOutletName
+        [string]$NetworkOutletName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsNetworkOutlets {
 
         $NetworkOutletsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsNetworkOutlets {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/netpoint/?range=0-9999999999999"
                 }
-                
+
                 $NetworkOutletAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($NetworkOutlet in $NetworkOutletAll) {
                     $NetworkOutletHash = [ordered]@{ }
-                    $NetworkOutletProperties = $NetworkOutlet.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $NetworkOutletProperties = $NetworkOutlet.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($NetworkOutletProp in $NetworkOutletProperties) {
                         $NetworkOutletHash.Add($NetworkOutletProp.Name, $NetworkOutletProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsNetworkOutlets {
                 $NetworkOutletsArray
                 $NetworkOutletsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            NetworkOutletId { 
+            NetworkOutletId {
                 foreach ( $NOId in $NetworkOutletId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsNetworkOutlets {
 
                         if ($Raw) {
                             $NetworkOutletHash = [ordered]@{ }
-                            $NetworkOutletProperties = $NetworkOutlet.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $NetworkOutletProperties = $NetworkOutlet.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($NetworkOutletProp in $NetworkOutletProperties) {
                                 $NetworkOutletHash.Add($NetworkOutletProp.Name, $NetworkOutletProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsNetworkOutlets {
                             $NetworkOutletsArray.Add($object)
                         } else {
                             $NetworkOutletHash = [ordered]@{ }
-                            $NetworkOutletProperties = $NetworkOutlet.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $NetworkOutletProperties = $NetworkOutlet.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($NetworkOutletProp in $NetworkOutletProperties) {
 
                                 $NetworkOutletPropNewValue = Get-GlpiToolsParameters -Parameter $NetworkOutletProp.Name -Value $NetworkOutletProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsNetworkOutlets {
                     } Catch {
 
                         Write-Verbose -Message "Network Outlet ID = $NOId is not found"
-                        
+
                     }
                     $NetworkOutletsArray
                     $NetworkOutletsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            NetworkOutletName { 
+            NetworkOutletName {
                 Search-GlpiToolsItems -SearchFor netpoint -SearchType contains -SearchValue $NetworkOutletName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "netpoint" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

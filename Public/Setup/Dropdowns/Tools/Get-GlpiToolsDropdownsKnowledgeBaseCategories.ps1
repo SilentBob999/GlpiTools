@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsKnowledgeBaseCategories -KnowledgeBaseCategoryId 326
     Function gets KnowledgeBaseCategoryId from GLPI which is provided through -KnowledgeBaseCategoryId after Function type, and return Knowledge Base Categories object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsKnowledgeBaseCategories -KnowledgeBaseCategoryId 326, 321
     Function gets Knowledge Base Categories Id from GLPI which is provided through -KnowledgeBaseCategoryId keyword after Function type (u can provide many ID's like that), and return Knowledge Base Categories object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsKnowledgeBaseCategories {
             ParameterSetName = "KnowledgeBaseCategoryId")]
         [alias('KBCID')]
         [string[]]$KnowledgeBaseCategoryId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "KnowledgeBaseCategoryId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "KnowledgeBaseCategoryName")]
         [alias('KBCN')]
-        [string]$KnowledgeBaseCategoryName
+        [string]$KnowledgeBaseCategoryName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsKnowledgeBaseCategories {
 
         $KnowledgeBaseCategoriesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsKnowledgeBaseCategories {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/knowbaseitemcategory/?range=0-9999999999999"
                 }
-                
+
                 $KnowledgeBaseCategoriesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($KnowledgeBaseCategory in $KnowledgeBaseCategoriesAll) {
                     $KnowledgeBaseCategoryHash = [ordered]@{ }
-                    $KnowledgeBaseCategoryProperties = $KnowledgeBaseCategory.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $KnowledgeBaseCategoryProperties = $KnowledgeBaseCategory.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($KnowledgeBaseCategoryProp in $KnowledgeBaseCategoryProperties) {
                         $KnowledgeBaseCategoryHash.Add($KnowledgeBaseCategoryProp.Name, $KnowledgeBaseCategoryProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsKnowledgeBaseCategories {
                 $KnowledgeBaseCategoriesArray
                 $KnowledgeBaseCategoriesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            KnowledgeBaseCategoryId { 
+            KnowledgeBaseCategoryId {
                 foreach ( $KBCId in $KnowledgeBaseCategoryId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsKnowledgeBaseCategories {
 
                         if ($Raw) {
                             $KnowledgeBaseCategoryHash = [ordered]@{ }
-                            $KnowledgeBaseCategoryProperties = $KnowledgeBaseCategory.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $KnowledgeBaseCategoryProperties = $KnowledgeBaseCategory.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($KnowledgeBaseCategoryProp in $KnowledgeBaseCategoryProperties) {
                                 $KnowledgeBaseCategoryHash.Add($KnowledgeBaseCategoryProp.Name, $KnowledgeBaseCategoryProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsKnowledgeBaseCategories {
                             $KnowledgeBaseCategoriesArray.Add($object)
                         } else {
                             $KnowledgeBaseCategoryHash = [ordered]@{ }
-                            $KnowledgeBaseCategoryProperties = $KnowledgeBaseCategory.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $KnowledgeBaseCategoryProperties = $KnowledgeBaseCategory.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($KnowledgeBaseCategoryProp in $KnowledgeBaseCategoryProperties) {
 
                                 $KnowledgeBaseCategoryPropNewValue = Get-GlpiToolsParameters -Parameter $KnowledgeBaseCategoryProp.Name -Value $KnowledgeBaseCategoryProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsKnowledgeBaseCategories {
                     } Catch {
 
                         Write-Verbose -Message "Knowledge Base Category ID = $KBCId is not found"
-                        
+
                     }
                     $KnowledgeBaseCategoriesArray
                     $KnowledgeBaseCategoriesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            KnowledgeBaseCategoryName { 
+            KnowledgeBaseCategoryName {
                 Search-GlpiToolsItems -SearchFor knowbaseitemcategory -SearchType contains -SearchValue $KnowledgeBaseCategoryName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "knowbaseitemcategory" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

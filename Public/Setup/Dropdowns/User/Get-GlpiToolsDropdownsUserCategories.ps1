@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsUserCategories -UserCategoryId 326
     Function gets UserCategoryId from GLPI which is provided through -UserCategoryId after Function type, and return User Categories object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsUserCategories -UserCategoryId 326, 321
     Function gets User CategoriesId from GLPI which is provided through -UserCategoryId keyword after Function type (u can provide many ID's like that), and return User Categories object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsUserCategories {
             ParameterSetName = "UserCategoryId")]
         [alias('UCID')]
         [string[]]$UserCategoryId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "UserCategoryId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "UserCategoryName")]
         [alias('UCN')]
-        [string]$UserCategoryName
+        [string]$UserCategoryName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsUserCategories {
 
         $UserCategoryArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsUserCategories {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/UserCategory/?range=0-9999999999999"
                 }
-                
+
                 $UserCategoriesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($UserCategory in $UserCategoriesAll) {
                     $UserCategoryHash = [ordered]@{ }
-                    $UserCategoryProperties = $UserCategory.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $UserCategoryProperties = $UserCategory.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($UserCategoryProp in $UserCategoryProperties) {
                         $UserCategoryHash.Add($UserCategoryProp.Name, $UserCategoryProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsUserCategories {
                 $UserCategoryArray
                 $UserCategoryArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            UserCategoryId { 
+            UserCategoryId {
                 foreach ( $UCId in $UserCategoryId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsUserCategories {
 
                         if ($Raw) {
                             $UserCategoryHash = [ordered]@{ }
-                            $UserCategoryProperties = $UserCategory.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $UserCategoryProperties = $UserCategory.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($UserCategoryProp in $UserCategoryProperties) {
                                 $UserCategoryHash.Add($UserCategoryProp.Name, $UserCategoryProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsUserCategories {
                             $UserCategoryArray.Add($object)
                         } else {
                             $UserCategoryHash = [ordered]@{ }
-                            $UserCategoryProperties = $UserCategory.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $UserCategoryProperties = $UserCategory.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($UserCategoryProp in $UserCategoryProperties) {
 
                                 $UserCategoryPropNewValue = Get-GlpiToolsParameters -Parameter $UserCategoryProp.Name -Value $UserCategoryProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsUserCategories {
                     } Catch {
 
                         Write-Verbose -Message "User Categories ID = $UCId is not found"
-                        
+
                     }
                     $UserCategoryArray
                     $UserCategoryArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            UserCategoryName { 
+            UserCategoryName {
                 Search-GlpiToolsItems -SearchFor Usercategory -SearchType contains -SearchValue $UserCategoryName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Usercategory" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

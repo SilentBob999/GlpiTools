@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsThirdPartyTypes -ThirdPartyTypeId 326
     Function gets ThirdPartyTypeId from GLPI which is provided through -ThirdPartyTypeId after Function type, and return Third Party Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsThirdPartyTypes -ThirdPartyTypeId 326, 321
     Function gets Third Party Types Id from GLPI which is provided through -ThirdPartyTypeId keyword after Function type (u can provide many ID's like that), and return Third Party Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsThirdPartyTypes {
             ParameterSetName = "ThirdPartyTypeId")]
         [alias('TPTID')]
         [string[]]$ThirdPartyTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ThirdPartyTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "ThirdPartyTypeName")]
         [alias('TPTN')]
-        [string]$ThirdPartyTypeName
+        [string]$ThirdPartyTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsThirdPartyTypes {
 
         $ThirdPartyTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsThirdPartyTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/suppliertype/?range=0-9999999999999"
                 }
-                
+
                 $ThirdPartyTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($ThirdPartyType in $ThirdPartyTypesAll) {
                     $ThirdPartyTypeHash = [ordered]@{ }
-                    $ThirdPartyTypeProperties = $ThirdPartyType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $ThirdPartyTypeProperties = $ThirdPartyType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($ThirdPartyTypeProp in $ThirdPartyTypeProperties) {
                         $ThirdPartyTypeHash.Add($ThirdPartyTypeProp.Name, $ThirdPartyTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsThirdPartyTypes {
                 $ThirdPartyTypesArray
                 $ThirdPartyTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ThirdPartyTypeId { 
+            ThirdPartyTypeId {
                 foreach ( $TPTId in $ThirdPartyTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsThirdPartyTypes {
 
                         if ($Raw) {
                             $ThirdPartyTypeHash = [ordered]@{ }
-                            $ThirdPartyTypeProperties = $ThirdPartyType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ThirdPartyTypeProperties = $ThirdPartyType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ThirdPartyTypeProp in $ThirdPartyTypeProperties) {
                                 $ThirdPartyTypeHash.Add($ThirdPartyTypeProp.Name, $ThirdPartyTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsThirdPartyTypes {
                             $ThirdPartyTypesArray.Add($object)
                         } else {
                             $ThirdPartyTypeHash = [ordered]@{ }
-                            $ThirdPartyTypeProperties = $ThirdPartyType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ThirdPartyTypeProperties = $ThirdPartyType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ThirdPartyTypeProp in $ThirdPartyTypeProperties) {
 
                                 $ThirdPartyTypePropNewValue = Get-GlpiToolsParameters -Parameter $ThirdPartyTypeProp.Name -Value $ThirdPartyTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsThirdPartyTypes {
                     } Catch {
 
                         Write-Verbose -Message "Third Party Type ID = $TPTId is not found"
-                        
+
                     }
                     $ThirdPartyTypesArray
                     $ThirdPartyTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ThirdPartyTypeName { 
+            ThirdPartyTypeName {
                 Search-GlpiToolsItems -SearchFor suppliertype -SearchType contains -SearchValue $ThirdPartyTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "suppliertype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

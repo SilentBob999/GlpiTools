@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOSKernels -OSKernelId 326
     Function gets OSKernelId from GLPI which is provided through -OSKernelId after Function type, and return OS Kernels object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOSKernels -OSKernelId 326, 321
     Function gets OS KernelsId from GLPI which is provided through -OSKernelId keyword after Function type (u can provide many ID's like that), and return OS Kernels object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsOSKernels {
             ParameterSetName = "OSKernelId")]
         [alias('OSKID')]
         [string[]]$OSKernelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "OSKernelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "OSKernelName")]
         [alias('OSKN')]
-        [string]$OSKernelName
+        [string]$OSKernelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsOSKernels {
 
         $OSKernelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsOSKernels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/operatingsystemkernel/?range=0-9999999999999"
                 }
-                
+
                 $OSKernelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($OSKernel in $OSKernelsAll) {
                     $OSKernelHash = [ordered]@{ }
-                    $OSKernelProperties = $OSKernel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $OSKernelProperties = $OSKernel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($OSKernelProp in $OSKernelProperties) {
                         $OSKernelHash.Add($OSKernelProp.Name, $OSKernelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsOSKernels {
                 $OSKernelsArray
                 $OSKernelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            OSKernelId { 
+            OSKernelId {
                 foreach ( $OSKId in $OSKernelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsOSKernels {
 
                         if ($Raw) {
                             $OSKernelHash = [ordered]@{ }
-                            $OSKernelProperties = $OSKernel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OSKernelProperties = $OSKernel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OSKernelProp in $OSKernelProperties) {
                                 $OSKernelHash.Add($OSKernelProp.Name, $OSKernelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsOSKernels {
                             $OSKernelsArray.Add($object)
                         } else {
                             $OSKernelHash = [ordered]@{ }
-                            $OSKernelProperties = $OSKernel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OSKernelProperties = $OSKernel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OSKernelProp in $OSKernelProperties) {
 
                                 $OSKernelPropNewValue = Get-GlpiToolsParameters -Parameter $OSKernelProp.Name -Value $OSKernelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsOSKernels {
                     } Catch {
 
                         Write-Verbose -Message "OS Kernel ID = $OSKId is not found"
-                        
+
                     }
                     $OSKernelsArray
                     $OSKernelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            OSKernelName { 
+            OSKernelName {
                 Search-GlpiToolsItems -SearchFor Operatingsystemkernel -SearchType contains -SearchValue $OSKernelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Operatingsystemkernel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

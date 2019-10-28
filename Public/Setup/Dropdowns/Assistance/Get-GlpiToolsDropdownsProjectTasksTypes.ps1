@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsProjectTasksTypes -ProjectTaskTypeId 326
     Function gets ProjectTaskTypeId from GLPI which is provided through -ProjectTaskTypeId after Function type, and return Project Tasks Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsProjectTasksTypes -ProjectTaskTypeId 326, 321
     Function gets Project Tasks Types Id from GLPI which is provided through -ProjectTaskTypeId keyword after Function type (u can provide many ID's like that), and return Project Tasks Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsProjectTasksTypes {
             ParameterSetName = "ProjectTaskTypeId")]
         [alias('PTTID')]
         [string[]]$ProjectTaskTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ProjectTaskTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "ProjectTaskTypeName")]
         [alias('PTTN')]
-        [string]$ProjectTaskTypeName
+        [string]$ProjectTaskTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsProjectTasksTypes {
 
         $ProjectTasksTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsProjectTasksTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/projecttasktype/?range=0-9999999999999"
                 }
-                
+
                 $ProjectTasksTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($ProjectTaskType in $ProjectTasksTypesAll) {
                     $ProjectTaskTypeHash = [ordered]@{ }
-                    $ProjectTaskTypeProperties = $ProjectTaskType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $ProjectTaskTypeProperties = $ProjectTaskType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($ProjectTaskTypeProp in $ProjectTaskTypeProperties) {
                         $ProjectTaskTypeHash.Add($ProjectTaskTypeProp.Name, $ProjectTaskTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsProjectTasksTypes {
                 $ProjectTasksTypesArray
                 $ProjectTasksTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ProjectTaskTypeId { 
+            ProjectTaskTypeId {
                 foreach ( $PTTId in $ProjectTaskTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsProjectTasksTypes {
 
                         if ($Raw) {
                             $ProjectTaskTypeHash = [ordered]@{ }
-                            $ProjectTaskTypeProperties = $ProjectTaskType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ProjectTaskTypeProperties = $ProjectTaskType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ProjectTaskTypeProp in $ProjectTaskTypeProperties) {
                                 $ProjectTaskTypeHash.Add($ProjectTaskTypeProp.Name, $ProjectTaskTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsProjectTasksTypes {
                             $ProjectTasksTypesArray.Add($object)
                         } else {
                             $ProjectTaskTypeHash = [ordered]@{ }
-                            $ProjectTaskTypeProperties = $ProjectTaskType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ProjectTaskTypeProperties = $ProjectTaskType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ProjectTaskTypeProp in $ProjectTaskTypeProperties) {
 
                                 $ProjectTaskTypePropNewValue = Get-GlpiToolsParameters -Parameter $ProjectTaskTypeProp.Name -Value $ProjectTaskTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsProjectTasksTypes {
                     } Catch {
 
                         Write-Verbose -Message "Project Task Type ID = $PTTId is not found"
-                        
+
                     }
                     $ProjectTasksTypesArray
                     $ProjectTasksTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ProjectTaskTypeName { 
+            ProjectTaskTypeName {
                 Search-GlpiToolsItems -SearchFor projecttasktype -SearchType contains -SearchValue $ProjectTaskTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "projecttasktype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceCaseModels -DeviceCaseModelId 326
     Function gets DeviceCaseModelId from GLPI which is provided through -DeviceCaseModelId after Function type, and return Device Case Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceCaseModels -DeviceCaseModelId 326, 321
     Function gets Device Case Models Id from GLPI which is provided through -DeviceCaseModelId keyword after Function type (u can provide many ID's like that), and return Device Case Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsDeviceCaseModels {
             ParameterSetName = "DeviceCaseModelId")]
         [alias('DCMID')]
         [string[]]$DeviceCaseModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DeviceCaseModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DeviceCaseModelName")]
         [alias('DCMN')]
-        [string]$DeviceCaseModelName
+        [string]$DeviceCaseModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsDeviceCaseModels {
 
         $DeviceCaseModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsDeviceCaseModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/devicecasemodel/?range=0-9999999999999"
                 }
-                
+
                 $DeviceCaseModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DeviceCaseModel in $DeviceCaseModelsAll) {
                     $DeviceCaseModelHash = [ordered]@{ }
-                    $DeviceCaseModelProperties = $DeviceCaseModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DeviceCaseModelProperties = $DeviceCaseModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DeviceCaseModelProp in $DeviceCaseModelProperties) {
                         $DeviceCaseModelHash.Add($DeviceCaseModelProp.Name, $DeviceCaseModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsDeviceCaseModels {
                 $DeviceCaseModelsArray
                 $DeviceCaseModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DeviceCaseModelId { 
+            DeviceCaseModelId {
                 foreach ( $DCMId in $DeviceCaseModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsDeviceCaseModels {
 
                         if ($Raw) {
                             $DeviceCaseModelHash = [ordered]@{ }
-                            $DeviceCaseModelProperties = $DeviceCaseModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceCaseModelProperties = $DeviceCaseModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceCaseModelProp in $DeviceCaseModelProperties) {
                                 $DeviceCaseModelHash.Add($DeviceCaseModelProp.Name, $DeviceCaseModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsDeviceCaseModels {
                             $DeviceCaseModelsArray.Add($object)
                         } else {
                             $DeviceCaseModelHash = [ordered]@{ }
-                            $DeviceCaseModelProperties = $DeviceCaseModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceCaseModelProperties = $DeviceCaseModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceCaseModelProp in $DeviceCaseModelProperties) {
 
                                 $DeviceCaseModelPropNewValue = Get-GlpiToolsParameters -Parameter $DeviceCaseModelProp.Name -Value $DeviceCaseModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsDeviceCaseModels {
                     } Catch {
 
                         Write-Verbose -Message "Device Case Model ID = $DCMId is not found"
-                        
+
                     }
                     $DeviceCaseModelsArray
                     $DeviceCaseModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DeviceCaseModelName { 
+            DeviceCaseModelName {
                 Search-GlpiToolsItems -SearchFor DeviceCaseModel -SearchType contains -SearchValue $DeviceCaseModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceCaseModel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

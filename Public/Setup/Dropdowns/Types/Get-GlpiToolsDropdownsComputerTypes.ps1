@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsComputerTypes -ComputerTypeId 326
     Function gets ComputerTypeId from GLPI which is provided through -ComputerTypeId after Function type, and return ComputerType object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsComputerTypes -ComputerTypeId 326, 321
     Function gets ComputerTypeId from GLPI which is provided through -ComputerTypeId keyword after Function type (u can provide many ID's like that), and return ComputerType object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsComputerTypes {
             ParameterSetName = "ComputerTypeId")]
         [alias('CTID')]
         [string[]]$ComputerTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ComputerTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "ComputerTypeName")]
         [alias('CTN')]
-        [string]$ComputerTypeName
+        [string]$ComputerTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsComputerTypes {
 
         $ComputerTypeArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsComputerTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/ComputerType/?range=0-9999999999999"
                 }
-                
+
                 $GlpiComputerTypeAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($ComputerTypeModel in $GlpiComputerTypeAll) {
                     $ComputerTypeHash = [ordered]@{ }
-                    $ComputerTypeProperties = $ComputerTypeModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $ComputerTypeProperties = $ComputerTypeModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($ComputerTypeProp in $ComputerTypeProperties) {
                         $ComputerTypeHash.Add($ComputerTypeProp.Name, $ComputerTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsComputerTypes {
                 $ComputerTypeArray
                 $ComputerTypeArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ComputerTypeId { 
+            ComputerTypeId {
                 foreach ( $CTId in $ComputerTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsComputerTypes {
 
                         if ($Raw) {
                             $ComputerTypeHash = [ordered]@{ }
-                            $ComputerTypeProperties = $ComputerTypeModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ComputerTypeProperties = $ComputerTypeModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ComputerTypeProp in $ComputerTypeProperties) {
                                 $ComputerTypeHash.Add($ComputerTypeProp.Name, $ComputerTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsComputerTypes {
                             $ComputerTypeArray.Add($object)
                         } else {
                             $ComputerTypeHash = [ordered]@{ }
-                            $ComputerTypeProperties = $ComputerTypeModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ComputerTypeProperties = $ComputerTypeModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ComputerTypeProp in $ComputerTypeProperties) {
 
                                 switch ($ComputerTypeProp.Name) {
@@ -147,19 +155,22 @@ function Get-GlpiToolsDropdownsComputerTypes {
                     } Catch {
 
                         Write-Verbose -Message "ComputerType ID = $CTId is not found"
-                        
+
                     }
                     $ComputerTypeArray
                     $ComputerTypeArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ComputerTypeName { 
+            ComputerTypeName {
                 Search-GlpiToolsItems -SearchFor ComputerType -SearchType contains -SearchValue $ComputerTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "ComputerType" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

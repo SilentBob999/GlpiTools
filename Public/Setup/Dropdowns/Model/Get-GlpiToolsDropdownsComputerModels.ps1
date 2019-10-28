@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\Users\Wojtek> Get-GlpiToolsDropdownsComputerModels -ComputerModelsId 326
     Function gets ComputerModelsId from GLPI which is provided through -ComputerModelsId after Function type, and return Computer Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\Users\Wojtek> Get-GlpiToolsDropdownsComputerModels -ComputerModelsId 326, 321
     Function gets ComputerModelsId from GLPI which is provided through -ComputerModelsId keyword after Function type (u can provide many ID's like that), and return Computer Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsComputerModels {
             ParameterSetName = "ComputerModelsId")]
         [alias('CMID')]
         [string[]]$ComputerModelsId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ComputerModelsId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "ComputerModelsName")]
         [alias('CMN')]
-        [string]$ComputerModelsName
+        [string]$ComputerModelsName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsComputerModels {
 
         $ComputerModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsComputerModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/ComputerModel/?range=0-9999999999999"
                 }
-                
+
                 $GlpiComputerModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiComputerModel in $GlpiComputerModelsAll) {
                     $ComputerModelHash = [ordered]@{ }
-                    $ComputerModelProperties = $GlpiComputerModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $ComputerModelProperties = $GlpiComputerModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($ComputerModelProp in $ComputerModelProperties) {
                         $ComputerModelHash.Add($ComputerModelProp.Name, $ComputerModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsComputerModels {
                 $ComputerModelsArray
                 $ComputerModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ComputerModelsId { 
+            ComputerModelsId {
                 foreach ( $CMId in $ComputerModelsId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsComputerModels {
 
                         if ($Raw) {
                             $ComputerModelHash = [ordered]@{ }
-                            $ComputerModelProperties = $GlpiComputerModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ComputerModelProperties = $GlpiComputerModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ComputerModelProp in $ComputerModelProperties) {
                                 $ComputerModelHash.Add($ComputerModelProp.Name, $ComputerModelProp.Value)
                             }
@@ -131,17 +139,17 @@ function Get-GlpiToolsDropdownsComputerModels {
                             $ComputerModelsArray.Add($object)
                         } else {
                             $ComputerModelHash = [ordered]@{ }
-                            $ComputerModelProperties = $GlpiComputerModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ComputerModelProperties = $GlpiComputerModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ComputerModelProp in $ComputerModelProperties) {
 
                                 switch ($ComputerModelProp.Name) {
                                     is_half_rack {
-                                        if ($ComputerModelProp.Value -eq 0) { 
-                                            $ComputerModelPropNewValue = 'No' 
+                                        if ($ComputerModelProp.Value -eq 0) {
+                                            $ComputerModelPropNewValue = 'No'
                                         } else {
                                             $ComputerModelPropNewValue = 'Yes'
-                                        } 
+                                        }
                                     }
                                     Default { $ComputerModelPropNewValue = $ComputerModelProp.Value }
                                 }
@@ -154,19 +162,22 @@ function Get-GlpiToolsDropdownsComputerModels {
                     } Catch {
 
                         Write-Verbose -Message "ComputerModel ID = $CMId is not found"
-                        
+
                     }
                     $ComputerModelsArray
                     $ComputerModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ComputerModelsName { 
-                Search-GlpiToolsItems -SearchFor Computermodel -SearchType contains -SearchValue $ComputerModelsName 
-            } 
+            ComputerModelsName {
+                Search-GlpiToolsItems -SearchFor Computermodel -SearchType contains -SearchValue $ComputerModelsName
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Computermodel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

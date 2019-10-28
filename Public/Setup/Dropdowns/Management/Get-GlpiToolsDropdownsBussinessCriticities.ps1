@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsBussinessCriticities -BussinessCriticityId 326
     Function gets BussinessCriticityId from GLPI which is provided through -BussinessCriticityId after Function type, and return Bussiness Criticities object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsBussinessCriticities -BussinessCriticityId 326, 321
     Function gets Bussiness Criticities Id from GLPI which is provided through -BussinessCriticityId keyword after Function type (u can provide many ID's like that), and return Bussiness Criticities object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsBussinessCriticities {
             ParameterSetName = "BussinessCriticityId")]
         [alias('BCID')]
         [string[]]$BussinessCriticityId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "BussinessCriticityId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "BussinessCriticityName")]
         [alias('BCN')]
-        [string]$BussinessCriticityName
+        [string]$BussinessCriticityName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsBussinessCriticities {
 
         $BussinessCriticitiesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsBussinessCriticities {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/businesscriticity/?range=0-9999999999999"
                 }
-                
+
                 $BussinessCriticitiesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($BussinessCriticity in $BussinessCriticitiesAll) {
                     $BussinessCriticityHash = [ordered]@{ }
-                    $BussinessCriticityProperties = $BussinessCriticity.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $BussinessCriticityProperties = $BussinessCriticity.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($BussinessCriticityProp in $BussinessCriticityProperties) {
                         $BussinessCriticityHash.Add($BussinessCriticityProp.Name, $BussinessCriticityProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsBussinessCriticities {
                 $BussinessCriticitiesArray
                 $BussinessCriticitiesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            BussinessCriticityId { 
+            BussinessCriticityId {
                 foreach ( $BCId in $BussinessCriticityId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsBussinessCriticities {
 
                         if ($Raw) {
                             $BussinessCriticityHash = [ordered]@{ }
-                            $BussinessCriticityProperties = $BussinessCriticity.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $BussinessCriticityProperties = $BussinessCriticity.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($BussinessCriticityProp in $BussinessCriticityProperties) {
                                 $BussinessCriticityHash.Add($BussinessCriticityProp.Name, $BussinessCriticityProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsBussinessCriticities {
                             $BussinessCriticitiesArray.Add($object)
                         } else {
                             $BussinessCriticityHash = [ordered]@{ }
-                            $BussinessCriticityProperties = $BussinessCriticity.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $BussinessCriticityProperties = $BussinessCriticity.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($BussinessCriticityProp in $BussinessCriticityProperties) {
 
                                 $BussinessCriticityPropNewValue = Get-GlpiToolsParameters -Parameter $BussinessCriticityProp.Name -Value $BussinessCriticityProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsBussinessCriticities {
                     } Catch {
 
                         Write-Verbose -Message "Bussiness Criticity ID = $BCId is not found"
-                        
+
                     }
                     $BussinessCriticitiesArray
                     $BussinessCriticitiesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            BussinessCriticityName { 
+            BussinessCriticityName {
                 Search-GlpiToolsItems -SearchFor businesscriticity -SearchType contains -SearchValue $BussinessCriticityName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "businesscriticity" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsCartridgeTypes -CartridgeTypeId 326
     Function gets CartridgeTypeId from GLPI which is provided through -CartridgeTypeId after Function type, and return Cartridge Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsCartridgeTypes -CartridgeTypeId 326, 321
     Function gets Cartridge Types Id from GLPI which is provided through -CartridgeTypeId keyword after Function type (u can provide many ID's like that), and return Cartridge Types object
 .EXAMPLE
@@ -54,17 +54,24 @@ function Get-GlpiToolsDropdownsCartridgeTypes {
         [alias('CTID')]
         [string[]]$CartridgeTypeId,
         [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
+        [parameter(Mandatory = $false,
             ParameterSetName = "CartridgeTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "CartridgeTypeName")]
         [alias('CTN')]
-        [string]$CartridgeTypeName
+        [string]$CartridgeTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +83,10 @@ function Get-GlpiToolsDropdownsCartridgeTypes {
 
         $CartridgeTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +96,13 @@ function Get-GlpiToolsDropdownsCartridgeTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/cartridgeitemtype/?range=0-9999999999999"
                 }
-                
+
                 $CartridgeTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($CartridgeType in $CartridgeTypesAll) {
                     $CartridgeTypeHash = [ordered]@{ }
-                    $CartridgeTypeProperties = $CartridgeType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $CartridgeTypeProperties = $CartridgeType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($CartridgeTypeProp in $CartridgeTypeProperties) {
                         $CartridgeTypeHash.Add($CartridgeTypeProp.Name, $CartridgeTypeProp.Value)
                     }
@@ -105,7 +112,7 @@ function Get-GlpiToolsDropdownsCartridgeTypes {
                 $CartridgeTypesArray
                 $CartridgeTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            CartridgeTypeId { 
+            CartridgeTypeId {
                 foreach ( $CTId in $CartridgeTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +129,8 @@ function Get-GlpiToolsDropdownsCartridgeTypes {
 
                         if ($Raw) {
                             $CartridgeTypeHash = [ordered]@{ }
-                            $CartridgeTypeProperties = $CartridgeType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $CartridgeTypeProperties = $CartridgeType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($CartridgeTypeProp in $CartridgeTypeProperties) {
                                 $CartridgeTypeHash.Add($CartridgeTypeProp.Name, $CartridgeTypeProp.Value)
                             }
@@ -131,8 +138,8 @@ function Get-GlpiToolsDropdownsCartridgeTypes {
                             $CartridgeTypesArray.Add($object)
                         } else {
                             $CartridgeTypeHash = [ordered]@{ }
-                            $CartridgeTypeProperties = $CartridgeType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $CartridgeTypeProperties = $CartridgeType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($CartridgeTypeProp in $CartridgeTypeProperties) {
 
                                 $CartridgeTypePropNewValue = Get-GlpiToolsParameters -Parameter $CartridgeTypeProp.Name -Value $CartridgeTypeProp.Value
@@ -145,19 +152,22 @@ function Get-GlpiToolsDropdownsCartridgeTypes {
                     } Catch {
 
                         Write-Verbose -Message "Cartridge Type ID = $CTId is not found"
-                        
+
                     }
                     $CartridgeTypesArray
                     $CartridgeTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            CartridgeTypeName { 
+            CartridgeTypeName {
                 Search-GlpiToolsItems -SearchFor cartridgeitemtype -SearchType contains -SearchValue $CartridgeTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "cartridgeitemtype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }
