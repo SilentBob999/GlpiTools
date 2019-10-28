@@ -164,7 +164,7 @@ function Get-GlpiToolsDropdownsPhonesPowerSupplyTypes {
             }
             SearchText {
                 Get-GlpiToolsItems -ItemType "phonepowersupply" -SearchText $SearchText -raw $Raw
-
+            }
             Default { }
         }
     }
