@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsBlacklists -BlacklistsId 326
     Function gets BlacklistsId from GLPI which is provided through -BlacklistsId after Function type, and return Blacklists object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsBlacklists -BlacklistsId 326, 321
     Function gets BlacklistsId from GLPI which is provided through -BlacklistsId keyword after Function type (u can provide many ID's like that), and return Blacklists object
 .EXAMPLE
@@ -53,18 +53,27 @@ function Get-GlpiToolsDropdownsBlacklists {
             ParameterSetName = "BlacklistsId")]
         [alias('BID')]
         [string[]]$BlacklistsId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "BlacklistsId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "BlacklistsName")]
         [alias('BN')]
-        [string]$BlacklistsName
+        [string]$BlacklistsName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
+
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +85,10 @@ function Get-GlpiToolsDropdownsBlacklists {
 
         $BlacklistsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +98,13 @@ function Get-GlpiToolsDropdownsBlacklists {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Blacklist/?range=0-9999999999999"
                 }
-                
+
                 $GlpiBlacklistsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($Blacklists in $GlpiBlacklistsAll) {
                     $BlacklistsHash = [ordered]@{ }
-                    $BlacklistsProperties = $Blacklists.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $BlacklistsProperties = $Blacklists.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($BlacklistsProp in $BlacklistsProperties) {
                         $BlacklistsHash.Add($BlacklistsProp.Name, $BlacklistsProp.Value)
                     }
@@ -105,7 +114,7 @@ function Get-GlpiToolsDropdownsBlacklists {
                 $BlacklistsArray
                 $BlacklistsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            BlacklistsId { 
+            BlacklistsId {
                 foreach ( $BId in $BlacklistsId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +131,8 @@ function Get-GlpiToolsDropdownsBlacklists {
 
                         if ($Raw) {
                             $BlacklistsHash = [ordered]@{ }
-                            $BlacklistsProperties = $Blacklists.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $BlacklistsProperties = $Blacklists.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($BlacklistsProp in $BlacklistsProperties) {
                                 $BlacklistsHash.Add($BlacklistsProp.Name, $BlacklistsProp.Value)
                             }
@@ -131,8 +140,8 @@ function Get-GlpiToolsDropdownsBlacklists {
                             $BlacklistsArray.Add($object)
                         } else {
                             $BlacklistsHash = [ordered]@{ }
-                            $BlacklistsProperties = $Blacklists.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $BlacklistsProperties = $Blacklists.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($BlacklistsProp in $BlacklistsProperties) {
 
                                 $BlacklistsPropNewValue = Get-GlpiToolsParameters -Parameter $BlacklistsProp.Name -Value $BlacklistsProp.Value
@@ -145,19 +154,22 @@ function Get-GlpiToolsDropdownsBlacklists {
                     } Catch {
 
                         Write-Verbose -Message "Blacklists ID = $BId is not found"
-                        
+
                     }
                     $BlacklistsArray
                     $BlacklistsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            BlacklistsName { 
+            BlacklistsName {
                 Search-GlpiToolsItems -SearchFor Blacklist -SearchType contains -SearchValue $BlacklistsName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Blacklist" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceGraphicCardModels -DeviceGraphicCardModelId 326
     Function gets DeviceGraphicCardModelId from GLPI which is provided through -DeviceGraphicCardModelId after Function type, and return Device Graphic Card Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceGraphicCardModels -DeviceGraphicCardModelId 326, 321
     Function gets Device Graphic Card Models Id from GLPI which is provided through -DeviceGraphicCardModelId keyword after Function type (u can provide many ID's like that), and return Device Graphic Card Models object
 .EXAMPLE
@@ -53,18 +53,27 @@ function Get-GlpiToolsDropdownsDeviceGraphicCardModels {
             ParameterSetName = "DeviceGraphicCardModelId")]
         [alias('DGCMID')]
         [string[]]$DeviceGraphicCardModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DeviceGraphicCardModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DeviceGraphicCardModelName")]
         [alias('DGCMN')]
-        [string]$DeviceGraphicCardModelName
+        [string]$DeviceGraphicCardModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
+
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +85,10 @@ function Get-GlpiToolsDropdownsDeviceGraphicCardModels {
 
         $DeviceGraphicCardModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +98,13 @@ function Get-GlpiToolsDropdownsDeviceGraphicCardModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/devicegraphiccardmodel/?range=0-9999999999999"
                 }
-                
+
                 $DeviceGraphicCardModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DeviceGraphicCardModel in $DeviceGraphicCardModelsAll) {
                     $DeviceGraphicCardModelHash = [ordered]@{ }
-                    $DeviceGraphicCardModelProperties = $DeviceGraphicCardModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DeviceGraphicCardModelProperties = $DeviceGraphicCardModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DeviceGraphicCardModelProp in $DeviceGraphicCardModelProperties) {
                         $DeviceGraphicCardModelHash.Add($DeviceGraphicCardModelProp.Name, $DeviceGraphicCardModelProp.Value)
                     }
@@ -105,7 +114,7 @@ function Get-GlpiToolsDropdownsDeviceGraphicCardModels {
                 $DeviceGraphicCardModelsArray
                 $DeviceGraphicCardModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DeviceGraphicCardModelId { 
+            DeviceGraphicCardModelId {
                 foreach ( $DGCMId in $DeviceGraphicCardModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +131,8 @@ function Get-GlpiToolsDropdownsDeviceGraphicCardModels {
 
                         if ($Raw) {
                             $DeviceGraphicCardModelHash = [ordered]@{ }
-                            $DeviceGraphicCardModelProperties = $DeviceGraphicCardModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceGraphicCardModelProperties = $DeviceGraphicCardModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceGraphicCardModelProp in $DeviceGraphicCardModelProperties) {
                                 $DeviceGraphicCardModelHash.Add($DeviceGraphicCardModelProp.Name, $DeviceGraphicCardModelProp.Value)
                             }
@@ -131,8 +140,8 @@ function Get-GlpiToolsDropdownsDeviceGraphicCardModels {
                             $DeviceGraphicCardModelsArray.Add($object)
                         } else {
                             $DeviceGraphicCardModelHash = [ordered]@{ }
-                            $DeviceGraphicCardModelProperties = $DeviceGraphicCardModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceGraphicCardModelProperties = $DeviceGraphicCardModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceGraphicCardModelProp in $DeviceGraphicCardModelProperties) {
 
                                 $DeviceGraphicCardModelPropNewValue = Get-GlpiToolsParameters -Parameter $DeviceGraphicCardModelProp.Name -Value $DeviceGraphicCardModelProp.Value
@@ -145,19 +154,22 @@ function Get-GlpiToolsDropdownsDeviceGraphicCardModels {
                     } Catch {
 
                         Write-Verbose -Message "Device Graphic Card Model ID = $DGCMId is not found"
-                        
+
                     }
                     $DeviceGraphicCardModelsArray
                     $DeviceGraphicCardModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DeviceGraphicCardModelName { 
+            DeviceGraphicCardModelName {
                 Search-GlpiToolsItems -SearchFor DeviceGraphicCardModel -SearchType contains -SearchValue $DeviceGraphicCardModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceGraphicCardModel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

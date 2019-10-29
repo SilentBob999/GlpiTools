@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsEnclosureModels -EnclosureModelId 326
     Function gets EnclosureModelId from GLPI which is provided through -EnclosureModelId after Function type, and return Enclosure Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsEnclosureModels -EnclosureModelId 326, 321
     Function gets Enclosure Models Id from GLPI which is provided through -EnclosureModelId keyword after Function type (u can provide many ID's like that), and return Enclosure Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsEnclosureModels {
             ParameterSetName = "EnclosureModelId")]
         [alias('EMID')]
         [string[]]$EnclosureModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "EnclosureModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "EnclosureModelName")]
         [alias('EMN')]
-        [string]$EnclosureModelName
+        [string]$EnclosureModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsEnclosureModels {
 
         $EnclosureModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsEnclosureModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/enclosuremodel/?range=0-9999999999999"
                 }
-                
+
                 $EnclosureModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($EnclosureModel in $EnclosureModelsAll) {
                     $EnclosureModelHash = [ordered]@{ }
-                    $EnclosureModelProperties = $EnclosureModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $EnclosureModelProperties = $EnclosureModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($EnclosureModelProp in $EnclosureModelProperties) {
                         $EnclosureModelHash.Add($EnclosureModelProp.Name, $EnclosureModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsEnclosureModels {
                 $EnclosureModelsArray
                 $EnclosureModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            EnclosureModelId { 
+            EnclosureModelId {
                 foreach ( $EMId in $EnclosureModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsEnclosureModels {
 
                         if ($Raw) {
                             $EnclosureModelHash = [ordered]@{ }
-                            $EnclosureModelProperties = $EnclosureModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $EnclosureModelProperties = $EnclosureModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($EnclosureModelProp in $EnclosureModelProperties) {
                                 $EnclosureModelHash.Add($EnclosureModelProp.Name, $EnclosureModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsEnclosureModels {
                             $EnclosureModelsArray.Add($object)
                         } else {
                             $EnclosureModelHash = [ordered]@{ }
-                            $EnclosureModelProperties = $EnclosureModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $EnclosureModelProperties = $EnclosureModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($EnclosureModelProp in $EnclosureModelProperties) {
 
                                 $EnclosureModelPropNewValue = Get-GlpiToolsParameters -Parameter $EnclosureModelProp.Name -Value $EnclosureModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsEnclosureModels {
                     } Catch {
 
                         Write-Verbose -Message "Enclosure Model ID = $EMId is not found"
-                        
+
                     }
                     $EnclosureModelsArray
                     $EnclosureModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            EnclosureModelName { 
+            EnclosureModelName {
                 Search-GlpiToolsItems -SearchFor enclosuremodel -SearchType contains -SearchValue $EnclosureModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "enclosuremodel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

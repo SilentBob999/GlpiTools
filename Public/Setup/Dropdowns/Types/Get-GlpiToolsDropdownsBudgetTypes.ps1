@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsBudgetTypes -BudgetTypeId 326
     Function gets BudgetTypeId from GLPI which is provided through -BudgetTypeId after Function type, and return Budget Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsBudgetTypes -BudgetTypeId 326, 321
     Function gets Budget Types Id from GLPI which is provided through -BudgetTypeId keyword after Function type (u can provide many ID's like that), and return Budget Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsBudgetTypes {
             ParameterSetName = "BudgetTypeId")]
         [alias('BTID')]
         [string[]]$BudgetTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "BudgetTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "BudgetTypeName")]
         [alias('BTN')]
-        [string]$BudgetTypeName
+        [string]$BudgetTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsBudgetTypes {
 
         $BudgetTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsBudgetTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Budgettype/?range=0-9999999999999"
                 }
-                
+
                 $BudgetTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($BudgetType in $BudgetTypesAll) {
                     $BudgetTypeHash = [ordered]@{ }
-                    $BudgetTypeProperties = $BudgetType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $BudgetTypeProperties = $BudgetType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($BudgetTypeProp in $BudgetTypeProperties) {
                         $BudgetTypeHash.Add($BudgetTypeProp.Name, $BudgetTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsBudgetTypes {
                 $BudgetTypesArray
                 $BudgetTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            BudgetTypeId { 
+            BudgetTypeId {
                 foreach ( $BTId in $BudgetTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsBudgetTypes {
 
                         if ($Raw) {
                             $BudgetTypeHash = [ordered]@{ }
-                            $BudgetTypeProperties = $BudgetType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $BudgetTypeProperties = $BudgetType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($BudgetTypeProp in $BudgetTypeProperties) {
                                 $BudgetTypeHash.Add($BudgetTypeProp.Name, $BudgetTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsBudgetTypes {
                             $BudgetTypesArray.Add($object)
                         } else {
                             $BudgetTypeHash = [ordered]@{ }
-                            $BudgetTypeProperties = $BudgetType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $BudgetTypeProperties = $BudgetType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($BudgetTypeProp in $BudgetTypeProperties) {
 
                                 $BudgetTypePropNewValue = Get-GlpiToolsParameters -Parameter $BudgetTypeProp.Name -Value $BudgetTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsBudgetTypes {
                     } Catch {
 
                         Write-Verbose -Message "Budget Type ID = $BTId is not found"
-                        
+
                     }
                     $BudgetTypesArray
                     $BudgetTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            BudgetTypeName { 
+            BudgetTypeName {
                 Search-GlpiToolsItems -SearchFor Budgettype -SearchType contains -SearchValue $BudgetTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Budgettype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

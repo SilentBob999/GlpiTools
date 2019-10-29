@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsProjectTaskTemplates -ProjectTaskTemplateId 326
     Function gets ProjectTaskTemplateId from GLPI which is provided through -ProjectTaskTemplateId after Function type, and return Project Task Templates object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsProjectTaskTemplates -ProjectTaskTemplateId 326, 321
     Function gets Project Task Templates Id from GLPI which is provided through -ProjectTaskTemplateId keyword after Function type (u can provide many ID's like that), and return Project Task Templates object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsProjectTaskTemplates {
             ParameterSetName = "ProjectTaskTemplateId")]
         [alias('PTTID')]
         [string[]]$ProjectTaskTemplateId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ProjectTaskTemplateId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "ProjectTaskTemplateName")]
         [alias('PTTN')]
-        [string]$ProjectTaskTemplateName
+        [string]$ProjectTaskTemplateName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsProjectTaskTemplates {
 
         $ProjectTaskTemplatesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsProjectTaskTemplates {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/projecttasktemplate/?range=0-9999999999999"
                 }
-                
+
                 $ProjectTaskTemplatesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($ProjectTaskTemplate in $ProjectTaskTemplatesAll) {
                     $ProjectTaskTemplateHash = [ordered]@{ }
-                    $ProjectTaskTemplateProperties = $ProjectTaskTemplate.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $ProjectTaskTemplateProperties = $ProjectTaskTemplate.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($ProjectTaskTemplateProp in $ProjectTaskTemplateProperties) {
                         $ProjectTaskTemplateHash.Add($ProjectTaskTemplateProp.Name, $ProjectTaskTemplateProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsProjectTaskTemplates {
                 $ProjectTaskTemplatesArray
                 $ProjectTaskTemplatesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ProjectTaskTemplateId { 
+            ProjectTaskTemplateId {
                 foreach ( $PTTId in $ProjectTaskTemplateId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsProjectTaskTemplates {
 
                         if ($Raw) {
                             $ProjectTaskTemplateHash = [ordered]@{ }
-                            $ProjectTaskTemplateProperties = $ProjectTaskTemplate.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ProjectTaskTemplateProperties = $ProjectTaskTemplate.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ProjectTaskTemplateProp in $ProjectTaskTemplateProperties) {
                                 $ProjectTaskTemplateHash.Add($ProjectTaskTemplateProp.Name, $ProjectTaskTemplateProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsProjectTaskTemplates {
                             $ProjectTaskTemplatesArray.Add($object)
                         } else {
                             $ProjectTaskTemplateHash = [ordered]@{ }
-                            $ProjectTaskTemplateProperties = $ProjectTaskTemplate.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ProjectTaskTemplateProperties = $ProjectTaskTemplate.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ProjectTaskTemplateProp in $ProjectTaskTemplateProperties) {
 
                                 $ProjectTaskTemplatePropNewValue = Get-GlpiToolsParameters -Parameter $ProjectTaskTemplateProp.Name -Value $ProjectTaskTemplateProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsProjectTaskTemplates {
                     } Catch {
 
                         Write-Verbose -Message "Project Task Template ID = $PTTId is not found"
-                        
+
                     }
                     $ProjectTaskTemplatesArray
                     $ProjectTaskTemplatesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ProjectTaskTemplateName { 
+            ProjectTaskTemplateName {
                 Search-GlpiToolsItems -SearchFor projecttasktemplate -SearchType contains -SearchValue $ProjectTaskTemplateName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "projecttasktemplate" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsUserTitles -UserTitleId 326
     Function gets UserTitleId from GLPI which is provided through -UserTitleId after Function type, and return User Titles object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsUserTitles -UserTitleId 326, 321
     Function gets User TitlesId from GLPI which is provided through -UserTitleId keyword after Function type (u can provide many ID's like that), and return User Titles object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsUserTitles {
             ParameterSetName = "UserTitleId")]
         [alias('UTID')]
         [string[]]$UserTitleId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "UserTitleId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "UserTitleName")]
         [alias('UTN')]
-        [string]$UserTitleName
+        [string]$UserTitleName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsUserTitles {
 
         $UserTitleArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsUserTitles {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/UserTitle/?range=0-9999999999999"
                 }
-                
+
                 $UserTitlesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($UserTitle in $UserTitlesAll) {
                     $UserTitleHash = [ordered]@{ }
-                    $UserTitleProperties = $UserTitle.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $UserTitleProperties = $UserTitle.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($UserTitleProp in $UserTitleProperties) {
                         $UserTitleHash.Add($UserTitleProp.Name, $UserTitleProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsUserTitles {
                 $UserTitleArray
                 $UserTitleArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            UserTitleId { 
+            UserTitleId {
                 foreach ( $UTId in $UserTitleId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsUserTitles {
 
                         if ($Raw) {
                             $UserTitleHash = [ordered]@{ }
-                            $UserTitleProperties = $UserTitle.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $UserTitleProperties = $UserTitle.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($UserTitleProp in $UserTitleProperties) {
                                 $UserTitleHash.Add($UserTitleProp.Name, $UserTitleProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsUserTitles {
                             $UserTitleArray.Add($object)
                         } else {
                             $UserTitleHash = [ordered]@{ }
-                            $UserTitleProperties = $UserTitle.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $UserTitleProperties = $UserTitle.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($UserTitleProp in $UserTitleProperties) {
 
                                 $UserTitlePropNewValue = Get-GlpiToolsParameters -Parameter $UserTitleProp.Name -Value $UserTitleProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsUserTitles {
                     } Catch {
 
                         Write-Verbose -Message "User Titles ID = $UTId is not found"
-                        
+
                     }
                     $UserTitleArray
                     $UserTitleArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            UserTitleName { 
+            UserTitleName {
                 Search-GlpiToolsItems -SearchFor Usertitle -SearchType contains -SearchValue $UserTitleName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Usertitle" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

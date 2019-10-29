@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsContractTypes -ContractTypeId 326
     Function gets ContractTypeId from GLPI which is provided through -ContractTypeId after Function type, and return Contract Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsContractTypes -ContractTypeId 326, 321
     Function gets Contract Types Id from GLPI which is provided through -ContractTypeId keyword after Function type (u can provide many ID's like that), and return Contract Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsContractTypes {
             ParameterSetName = "ContractTypeId")]
         [alias('CTID')]
         [string[]]$ContractTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ContractTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "ContractTypeName")]
         [alias('CTN')]
-        [string]$ContractTypeName
+        [string]$ContractTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsContractTypes {
 
         $ContractTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsContractTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/contracttype/?range=0-9999999999999"
                 }
-                
+
                 $ContractTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($ContractType in $ContractTypesAll) {
                     $ContractTypeHash = [ordered]@{ }
-                    $ContractTypeProperties = $ContractType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $ContractTypeProperties = $ContractType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($ContractTypeProp in $ContractTypeProperties) {
                         $ContractTypeHash.Add($ContractTypeProp.Name, $ContractTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsContractTypes {
                 $ContractTypesArray
                 $ContractTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ContractTypeId { 
+            ContractTypeId {
                 foreach ( $CTId in $ContractTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsContractTypes {
 
                         if ($Raw) {
                             $ContractTypeHash = [ordered]@{ }
-                            $ContractTypeProperties = $ContractType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ContractTypeProperties = $ContractType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ContractTypeProp in $ContractTypeProperties) {
                                 $ContractTypeHash.Add($ContractTypeProp.Name, $ContractTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsContractTypes {
                             $ContractTypesArray.Add($object)
                         } else {
                             $ContractTypeHash = [ordered]@{ }
-                            $ContractTypeProperties = $ContractType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ContractTypeProperties = $ContractType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ContractTypeProp in $ContractTypeProperties) {
 
                                 $ContractTypePropNewValue = Get-GlpiToolsParameters -Parameter $ContractTypeProp.Name -Value $ContractTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsContractTypes {
                     } Catch {
 
                         Write-Verbose -Message "Contract Type ID = $CTId is not found"
-                        
+
                     }
                     $ContractTypesArray
                     $ContractTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ContractTypeName { 
+            ContractTypeName {
                 Search-GlpiToolsItems -SearchFor contracttype -SearchType contains -SearchValue $ContractTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "contracttype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

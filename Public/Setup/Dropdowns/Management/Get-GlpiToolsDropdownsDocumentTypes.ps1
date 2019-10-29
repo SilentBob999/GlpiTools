@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDocumentTypes -DocumentTypeId 326
     Function gets DocumentTypeId from GLPI which is provided through -DocumentTypeId after Function type, and return Document types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDocumentTypes -DocumentTypeId 326, 321
     Function gets Document types Id from GLPI which is provided through -DocumentTypeId keyword after Function type (u can provide many ID's like that), and return Document types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsDocumentTypes {
             ParameterSetName = "DocumentTypeId")]
         [alias('DTID')]
         [string[]]$DocumentTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DocumentTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DocumentTypeName")]
         [alias('DTN')]
-        [string]$DocumentTypeName
+        [string]$DocumentTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsDocumentTypes {
 
         $DocumentTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsDocumentTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/documenttype/?range=0-9999999999999"
                 }
-                
+
                 $DocumentTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DocumentType in $DocumentTypesAll) {
                     $DocumentTypeHash = [ordered]@{ }
-                    $DocumentTypeProperties = $DocumentType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DocumentTypeProperties = $DocumentType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DocumentTypeProp in $DocumentTypeProperties) {
                         $DocumentTypeHash.Add($DocumentTypeProp.Name, $DocumentTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsDocumentTypes {
                 $DocumentTypesArray
                 $DocumentTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DocumentTypeId { 
+            DocumentTypeId {
                 foreach ( $DTId in $DocumentTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsDocumentTypes {
 
                         if ($Raw) {
                             $DocumentTypeHash = [ordered]@{ }
-                            $DocumentTypeProperties = $DocumentType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DocumentTypeProperties = $DocumentType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DocumentTypeProp in $DocumentTypeProperties) {
                                 $DocumentTypeHash.Add($DocumentTypeProp.Name, $DocumentTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsDocumentTypes {
                             $DocumentTypesArray.Add($object)
                         } else {
                             $DocumentTypeHash = [ordered]@{ }
-                            $DocumentTypeProperties = $DocumentType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DocumentTypeProperties = $DocumentType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DocumentTypeProp in $DocumentTypeProperties) {
 
                                 $DocumentTypePropNewValue = Get-GlpiToolsParameters -Parameter $DocumentTypeProp.Name -Value $DocumentTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsDocumentTypes {
                     } Catch {
 
                         Write-Verbose -Message "Document Type ID = $DTId is not found"
-                        
+
                     }
                     $DocumentTypesArray
                     $DocumentTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DocumentTypeName { 
+            DocumentTypeName {
                 Search-GlpiToolsItems -SearchFor documenttype -SearchType contains -SearchValue $DocumentTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "documenttype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceSensorModels -DeviceSensorModelId 326
     Function gets DeviceSensorModelId from GLPI which is provided through -DeviceSensorModelId after Function type, and return Device Sensor Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceSensorModels -DeviceSensorModelId 326, 321
     Function gets Device Sensor Models Id from GLPI which is provided through -DeviceSensorModelId keyword after Function type (u can provide many ID's like that), and return Device Sensor Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsDeviceSensorModels {
             ParameterSetName = "DeviceSensorModelId")]
         [alias('DSMID')]
         [string[]]$DeviceSensorModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DeviceSensorModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DeviceSensorModelName")]
         [alias('DSMN')]
-        [string]$DeviceSensorModelName
+        [string]$DeviceSensorModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsDeviceSensorModels {
 
         $DeviceSensorModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsDeviceSensorModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/DeviceSensorModel/?range=0-9999999999999"
                 }
-                
+
                 $DeviceSensorModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DeviceSensorModel in $DeviceSensorModelsAll) {
                     $DeviceSensorModelHash = [ordered]@{ }
-                    $DeviceSensorModelProperties = $DeviceSensorModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DeviceSensorModelProperties = $DeviceSensorModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DeviceSensorModelProp in $DeviceSensorModelProperties) {
                         $DeviceSensorModelHash.Add($DeviceSensorModelProp.Name, $DeviceSensorModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsDeviceSensorModels {
                 $DeviceSensorModelsArray
                 $DeviceSensorModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DeviceSensorModelId { 
+            DeviceSensorModelId {
                 foreach ( $DSMId in $DeviceSensorModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsDeviceSensorModels {
 
                         if ($Raw) {
                             $DeviceSensorModelHash = [ordered]@{ }
-                            $DeviceSensorModelProperties = $DeviceSensorModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceSensorModelProperties = $DeviceSensorModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceSensorModelProp in $DeviceSensorModelProperties) {
                                 $DeviceSensorModelHash.Add($DeviceSensorModelProp.Name, $DeviceSensorModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsDeviceSensorModels {
                             $DeviceSensorModelsArray.Add($object)
                         } else {
                             $DeviceSensorModelHash = [ordered]@{ }
-                            $DeviceSensorModelProperties = $DeviceSensorModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceSensorModelProperties = $DeviceSensorModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceSensorModelProp in $DeviceSensorModelProperties) {
 
                                 $DeviceSensorModelPropNewValue = Get-GlpiToolsParameters -Parameter $DeviceSensorModelProp.Name -Value $DeviceSensorModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsDeviceSensorModels {
                     } Catch {
 
                         Write-Verbose -Message "Device Sensor Model ID = $DSMId is not found"
-                        
+
                     }
                     $DeviceSensorModelsArray
                     $DeviceSensorModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DeviceSensorModelName { 
+            DeviceSensorModelName {
                 Search-GlpiToolsItems -SearchFor DeviceSensorModel -SearchType contains -SearchValue $DeviceSensorModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceSensorModel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

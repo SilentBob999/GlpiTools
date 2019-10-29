@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsTicketCategories -TicketCategoriesId 326
     Function gets TicketCategoriesId from GLPI which is provided through -TicketCategoriesId after Function type, and return Ticket Categories object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsTicketCategories -TicketCategoriesId 326, 321
     Function gets Ticket CategoriesId from GLPI which is provided through -TicketCategoriesId keyword after Function type (u can provide many ID's like that), and return Ticket Categories object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsTicketCategories {
             ParameterSetName = "TicketCategoriesId")]
         [alias('TCID')]
         [string[]]$TicketCategoriesId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "TicketCategoriesId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "TicketCategoriesName")]
         [alias('TCN')]
-        [string]$TicketCategoriesName
+        [string]$TicketCategoriesName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsTicketCategories {
 
         $TicketCategoriesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsTicketCategories {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/itilcategory/?range=0-9999999999999"
                 }
-                
+
                 $TicketCategoriesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($TicketCategories in $TicketCategoriesAll) {
                     $TicketCategoriesHash = [ordered]@{ }
-                    $TicketCategoriesProperties = $TicketCategories.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $TicketCategoriesProperties = $TicketCategories.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($TicketCategoriesProp in $TicketCategoriesProperties) {
                         $TicketCategoriesHash.Add($TicketCategoriesProp.Name, $TicketCategoriesProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsTicketCategories {
                 $TicketCategoriesArray
                 $TicketCategoriesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            TicketCategoriesId { 
+            TicketCategoriesId {
                 foreach ( $TCId in $TicketCategoriesId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsTicketCategories {
 
                         if ($Raw) {
                             $TicketCategoriesHash = [ordered]@{ }
-                            $TicketCategoriesProperties = $TicketCategories.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $TicketCategoriesProperties = $TicketCategories.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($TicketCategoriesProp in $TicketCategoriesProperties) {
                                 $TicketCategoriesHash.Add($TicketCategoriesProp.Name, $TicketCategoriesProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsTicketCategories {
                             $TicketCategoriesArray.Add($object)
                         } else {
                             $TicketCategoriesHash = [ordered]@{ }
-                            $TicketCategoriesProperties = $TicketCategories.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $TicketCategoriesProperties = $TicketCategories.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($TicketCategoriesProp in $TicketCategoriesProperties) {
 
                                 $TicketCategoriesPropNewValue = Get-GlpiToolsParameters -Parameter $TicketCategoriesProp.Name -Value $TicketCategoriesProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsTicketCategories {
                     } Catch {
 
                         Write-Verbose -Message "Ticket Categories ID = $TCId is not found"
-                        
+
                     }
                     $TicketCategoriesArray
                     $TicketCategoriesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            TicketCategoriesName { 
+            TicketCategoriesName {
                 Search-GlpiToolsItems -SearchFor Itilcategory -SearchType contains -SearchValue $TicketCategoriesName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Itilcategory" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

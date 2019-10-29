@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOSKernelVersions -OSKernelVersionId 326
     Function gets OSKernelVersionId from GLPI which is provided through -OSKernelVersionId after Function type, and return OS Kernel Versions object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOSKernelVersions -OSKernelVersionId 326, 321
     Function gets OS Kernel VersionsId from GLPI which is provided through -OSKernelVersionId keyword after Function type (u can provide many ID's like that), and return OS Kernel Versions object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsOSKernelVersions {
             ParameterSetName = "OSKernelVersionId")]
         [alias('OSKVID')]
         [string[]]$OSKernelVersionId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "OSKernelVersionId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "OSKernelVersionName")]
         [alias('OSKVN')]
-        [string]$OSKernelVersionName
+        [string]$OSKernelVersionName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsOSKernelVersions {
 
         $OSKernelVersionsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsOSKernelVersions {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Operatingsystemkernelversion/?range=0-9999999999999"
                 }
-                
+
                 $OSKernelVersionsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($OSKernelVersion in $OSKernelVersionsAll) {
                     $OSKernelVersionHash = [ordered]@{ }
-                    $OSKernelVersionProperties = $OSKernelVersion.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $OSKernelVersionProperties = $OSKernelVersion.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($OSKernelVersionProp in $OSKernelVersionProperties) {
                         $OSKernelVersionHash.Add($OSKernelVersionProp.Name, $OSKernelVersionProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsOSKernelVersions {
                 $OSKernelVersionsArray
                 $OSKernelVersionsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            OSKernelVersionId { 
+            OSKernelVersionId {
                 foreach ( $OSKVId in $OSKernelVersionId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsOSKernelVersions {
 
                         if ($Raw) {
                             $OSKernelVersionHash = [ordered]@{ }
-                            $OSKernelVersionProperties = $OSKernelVersion.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OSKernelVersionProperties = $OSKernelVersion.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OSKernelVersionProp in $OSKernelVersionProperties) {
                                 $OSKernelVersionHash.Add($OSKernelVersionProp.Name, $OSKernelVersionProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsOSKernelVersions {
                             $OSKernelVersionsArray.Add($object)
                         } else {
                             $OSKernelVersionHash = [ordered]@{ }
-                            $OSKernelVersionProperties = $OSKernelVersion.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OSKernelVersionProperties = $OSKernelVersion.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OSKernelVersionProp in $OSKernelVersionProperties) {
 
                                 $OSKernelVersionPropNewValue = Get-GlpiToolsParameters -Parameter $OSKernelVersionProp.Name -Value $OSKernelVersionProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsOSKernelVersions {
                     } Catch {
 
                         Write-Verbose -Message "OS Kernel Version ID = $OSKVId is not found"
-                        
+
                     }
                     $OSKernelVersionsArray
                     $OSKernelVersionsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            OSKernelVersionName { 
+            OSKernelVersionName {
                 Search-GlpiToolsItems -SearchFor Operatingsystemkernelversion -SearchType contains -SearchValue $OSKernelVersionName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Operatingsystemkernelversion" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

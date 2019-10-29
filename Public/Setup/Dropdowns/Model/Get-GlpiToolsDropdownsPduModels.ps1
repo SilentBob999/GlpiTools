@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsPduModels -PduModelId 326
     Function gets PduModelId from GLPI which is provided through -PduModelId after Function type, and return Pdu Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsPduModels -PduModelId 326, 321
     Function gets Pdu Models Id from GLPI which is provided through -PduModelId keyword after Function type (u can provide many ID's like that), and return Pdu Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsPduModels {
             ParameterSetName = "PduModelId")]
         [alias('PMID')]
         [string[]]$PduModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "PduModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "PduModelName")]
         [alias('PMN')]
-        [string]$PduModelName
+        [string]$PduModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsPduModels {
 
         $PduModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsPduModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/pdumodel/?range=0-9999999999999"
                 }
-                
+
                 $PduModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($PduModel in $PduModelsAll) {
                     $PduModelHash = [ordered]@{ }
-                    $PduModelProperties = $PduModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $PduModelProperties = $PduModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($PduModelProp in $PduModelProperties) {
                         $PduModelHash.Add($PduModelProp.Name, $PduModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsPduModels {
                 $PduModelsArray
                 $PduModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            PduModelId { 
+            PduModelId {
                 foreach ( $PMId in $PduModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsPduModels {
 
                         if ($Raw) {
                             $PduModelHash = [ordered]@{ }
-                            $PduModelProperties = $PduModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PduModelProperties = $PduModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PduModelProp in $PduModelProperties) {
                                 $PduModelHash.Add($PduModelProp.Name, $PduModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsPduModels {
                             $PduModelsArray.Add($object)
                         } else {
                             $PduModelHash = [ordered]@{ }
-                            $PduModelProperties = $PduModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PduModelProperties = $PduModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PduModelProp in $PduModelProperties) {
 
                                 $PduModelPropNewValue = Get-GlpiToolsParameters -Parameter $PduModelProp.Name -Value $PduModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsPduModels {
                     } Catch {
 
                         Write-Verbose -Message "Pdu Model ID = $PMId is not found"
-                        
+
                     }
                     $PduModelsArray
                     $PduModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            PduModelName { 
+            PduModelName {
                 Search-GlpiToolsItems -SearchFor pdumodel -SearchType contains -SearchValue $PduModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "pdumodel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

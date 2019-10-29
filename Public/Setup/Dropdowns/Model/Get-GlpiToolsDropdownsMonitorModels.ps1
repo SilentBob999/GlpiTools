@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsMonitorModels -MonitorModelId 326
     Function gets MonitorModelId from GLPI which is provided through -MonitorModelId after Function type, and return MonitorModel object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsMonitorModels -MonitorModelId 326, 321
     Function gets MonitorModelId from GLPI which is provided through -MonitorModelId keyword after Function type (u can provide many ID's like that), and return MonitorModel object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsMonitorModels {
             ParameterSetName = "MonitorModelId")]
         [alias('MMID')]
         [string[]]$MonitorModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "MonitorModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "MonitorModelName")]
         [alias('MMN')]
-        [string]$MonitorModelName
+        [string]$MonitorModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsMonitorModels {
 
         $MonitorModelArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsMonitorModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/MonitorModel/?range=0-9999999999999"
                 }
-                
+
                 $GlpiMonitorModelAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($MonitorModel in $GlpiMonitorModelAll) {
                     $MonitorModelHash = [ordered]@{ }
-                    $MonitorModelProperties = $MonitorModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $MonitorModelProperties = $MonitorModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($MonitorModelProp in $MonitorModelProperties) {
                         $MonitorModelHash.Add($MonitorModelProp.Name, $MonitorModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsMonitorModels {
                 $MonitorModelArray
                 $MonitorModelArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            MonitorModelId { 
+            MonitorModelId {
                 foreach ( $MMId in $MonitorModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsMonitorModels {
 
                         if ($Raw) {
                             $MonitorModelHash = [ordered]@{ }
-                            $MonitorModelProperties = $MonitorModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $MonitorModelProperties = $MonitorModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($MonitorModelProp in $MonitorModelProperties) {
                                 $MonitorModelHash.Add($MonitorModelProp.Name, $MonitorModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsMonitorModels {
                             $MonitorModelArray.Add($object)
                         } else {
                             $MonitorModelHash = [ordered]@{ }
-                            $MonitorModelProperties = $MonitorModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $MonitorModelProperties = $MonitorModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($MonitorModelProp in $MonitorModelProperties) {
 
                                 $MonitorModelPropNewValue = Get-GlpiToolsParameters -Parameter $MonitorModelProp.Name -Value $MonitorModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsMonitorModels {
                     } Catch {
 
                         Write-Verbose -Message "Monitor Model ID = $MMId is not found"
-                        
+
                     }
                     $MonitorModelArray
                     $MonitorModelArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            MonitorModelName { 
+            MonitorModelName {
                 Search-GlpiToolsItems -SearchFor MonitorModel -SearchType contains -SearchValue $MonitorModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "MonitorModel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

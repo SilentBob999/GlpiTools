@@ -8,7 +8,7 @@
     This parameter will return all FinancialAndAdminstrativeId informations for All Assets from GLPI
 .PARAMETER FinancialAndAdminstrativeId
     This parameter can take pipline input, either, you can use this function with -FinancialAndAdminstrativeId keyword.
-    Provide to this param FinancialAndAdminstrativeId ID running this function before with parameter All to retrieve id's 
+    Provide to this param FinancialAndAdminstrativeId ID running this function before with parameter All to retrieve id's
 .PARAMETER Raw
     Parameter which you can use with FinancialAndAdminstrativeId Parameter.
     FinancialAndAdminstrativeId has converted parameters from default, parameter Raw allows not convert this parameters.
@@ -21,7 +21,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsFinancialAndAdministrativeInformations -FinancialAndAdminstrativeId 326
     Function gets FinancialAndAdminstrativeId from GLPI which is provided through -FinancialAndAdminstrativeId after Function type, and return FinancialAndAdminstrative object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsFinancialAndAdministrativeInformations -FinancialAndAdminstrativeId 326, 321
     Function gets FinancialAndAdminstrativeId from GLPI which is provided through -FinancialAndAdminstrativeId keyword after Function type (u can provide many ID's like that), and return FinancialAndAdminstrative object
 .EXAMPLE
@@ -51,10 +51,17 @@ function Get-GlpiToolsFinancialAndAdministrativeInformations {
         [alias('FAAID')]
         [string[]]$FinancialAndAdminstrativeId,
         [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
+        [parameter(Mandatory = $false,
             ParameterSetName = "FinancialAndAdminstrativeId")]
-        [switch]$Raw
+        [switch]$Raw,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
 
         $AppToken = $Script:AppToken
@@ -70,11 +77,11 @@ function Get-GlpiToolsFinancialAndAdministrativeInformations {
         $FinancialAndAdminstrativeArray = [System.Collections.Generic.List[PSObject]]::New()
 
     }
-    
+
     process {
         switch ($ChoosenParam) {
             All {
-                
+
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -84,24 +91,24 @@ function Get-GlpiToolsFinancialAndAdministrativeInformations {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/infocom/?range=0-9999999999999"
                 }
-                
+
                 $GlpiFinancialAndAdminstrativeAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiFinancialAndAdminstrative in $GlpiFinancialAndAdminstrativeAll) {
                     $FinancialAndAdminstrativeHash = [ordered]@{ }
-                            $FinancialAndAdminstrativeProperties = $GlpiFinancialAndAdminstrative.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $FinancialAndAdminstrativeProperties = $GlpiFinancialAndAdminstrative.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($FinancialAndAdminstrativeProp in $FinancialAndAdminstrativeProperties) {
                                 $FinancialAndAdminstrativeHash.Add($FinancialAndAdminstrativeProp.Name, $FinancialAndAdminstrativeProp.Value)
                             }
                             $object = [pscustomobject]$FinancialAndAdminstrativeHash
-                            $FinancialAndAdminstrativeArray.Add($object) 
+                            $FinancialAndAdminstrativeArray.Add($object)
                 }
                 $FinancialAndAdminstrativeArray
                 $FinancialAndAdminstrativeArray = [System.Collections.Generic.List[PSObject]]::New()
-                
+
             }
-            FinancialAndAdminstrativeId { 
+            FinancialAndAdminstrativeId {
                 foreach ( $FAAId in $FinancialAndAdminstrativeId ) {
                     $params = @{
                         headers = @{
@@ -118,8 +125,8 @@ function Get-GlpiToolsFinancialAndAdministrativeInformations {
 
                         if ($Raw) {
                             $FinancialAndAdminstrativeHash = [ordered]@{ }
-                            $FinancialAndAdminstrativeProperties = $GlpiFinancialAndAdminstrative.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $FinancialAndAdminstrativeProperties = $GlpiFinancialAndAdminstrative.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($FinancialAndAdminstrativeProp in $FinancialAndAdminstrativeProperties) {
                                 $FinancialAndAdminstrativeHash.Add($FinancialAndAdminstrativeProp.Name, $FinancialAndAdminstrativeProp.Value)
                             }
@@ -127,10 +134,10 @@ function Get-GlpiToolsFinancialAndAdministrativeInformations {
                             $FinancialAndAdminstrativeArray.Add($object)
                         } else {
                             $FinancialAndAdminstrativeHash = [ordered]@{ }
-                            $FinancialAndAdminstrativeProperties = $GlpiFinancialAndAdminstrative.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $FinancialAndAdminstrativeProperties = $GlpiFinancialAndAdminstrative.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($FinancialAndAdminstrativeProp in $FinancialAndAdminstrativeProperties) {
-                                
+
                                 $FinancialAndAdminstrativePropNewValue = Get-GlpiToolsParameters -Parameter $FinancialAndAdminstrativeProp.Name -Value $FinancialAndAdminstrativeProp.Value
 
                                 $FinancialAndAdminstrativeHash.Add($FinancialAndAdminstrativeProp.Name, $FinancialAndAdminstrativePropNewValue)
@@ -141,18 +148,21 @@ function Get-GlpiToolsFinancialAndAdministrativeInformations {
                     } Catch {
 
                         Write-Verbose -Message "FinancialAndAdminstrativeId ID = $FAAId is not found"
-                        
+
                     }
                     $FinancialAndAdminstrativeArray
                     $FinancialAndAdminstrativeArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "infocom" -SearchText $SearchText -raw $Raw
+            }
             Default {
-                
+
             }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

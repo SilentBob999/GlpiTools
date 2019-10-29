@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsNetworkEquipmentModels -NetworkEquipmentModelId 326
     Function gets NetworkEquipmentModelId from GLPI which is provided through -NetworkEquipmentModelId after Function type, and return Network Equipment Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsNetworkEquipmentModels -NetworkEquipmentModelId 326, 321
     Function gets Network Equipment Models Id from GLPI which is provided through -NetworkEquipmentModelId keyword after Function type (u can provide many ID's like that), and return Network Equipment Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsNetworkEquipmentModels {
             ParameterSetName = "NetworkEquipmentModelId")]
         [alias('NEMID')]
         [string[]]$NetworkEquipmentModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "NetworkEquipmentModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "NetworkEquipmentModelName")]
         [alias('NEMN')]
-        [string]$NetworkEquipmentModelName
+        [string]$NetworkEquipmentModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsNetworkEquipmentModels {
 
         $NetworkEquipmentModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsNetworkEquipmentModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/networkequipmentmodel/?range=0-9999999999999"
                 }
-                
+
                 $NetworkEquipmentModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($NetworkEquipmentModel in $NetworkEquipmentModelsAll) {
                     $NetworkEquipmentModelHash = [ordered]@{ }
-                    $NetworkEquipmentModelProperties = $NetworkEquipmentModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $NetworkEquipmentModelProperties = $NetworkEquipmentModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($NetworkEquipmentModelProp in $NetworkEquipmentModelProperties) {
                         $NetworkEquipmentModelHash.Add($NetworkEquipmentModelProp.Name, $NetworkEquipmentModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsNetworkEquipmentModels {
                 $NetworkEquipmentModelsArray
                 $NetworkEquipmentModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            NetworkEquipmentModelId { 
+            NetworkEquipmentModelId {
                 foreach ( $NEMId in $NetworkEquipmentModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsNetworkEquipmentModels {
 
                         if ($Raw) {
                             $NetworkEquipmentModelHash = [ordered]@{ }
-                            $NetworkEquipmentModelProperties = $NetworkEquipmentModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $NetworkEquipmentModelProperties = $NetworkEquipmentModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($NetworkEquipmentModelProp in $NetworkEquipmentModelProperties) {
                                 $NetworkEquipmentModelHash.Add($NetworkEquipmentModelProp.Name, $NetworkEquipmentModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsNetworkEquipmentModels {
                             $NetworkEquipmentModelsArray.Add($object)
                         } else {
                             $NetworkEquipmentModelHash = [ordered]@{ }
-                            $NetworkEquipmentModelProperties = $NetworkEquipmentModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $NetworkEquipmentModelProperties = $NetworkEquipmentModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($NetworkEquipmentModelProp in $NetworkEquipmentModelProperties) {
 
                                 $NetworkEquipmentModelPropNewValue = Get-GlpiToolsParameters -Parameter $NetworkEquipmentModelProp.Name -Value $NetworkEquipmentModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsNetworkEquipmentModels {
                     } Catch {
 
                         Write-Verbose -Message "Network Equipment Model ID = $NEMId is not found"
-                        
+
                     }
                     $NetworkEquipmentModelsArray
                     $NetworkEquipmentModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            NetworkEquipmentModelName { 
+            NetworkEquipmentModelName {
                 Search-GlpiToolsItems -SearchFor Networkequipmentmodel -SearchType contains -SearchValue $NetworkEquipmentModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Networkequipmentmodel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

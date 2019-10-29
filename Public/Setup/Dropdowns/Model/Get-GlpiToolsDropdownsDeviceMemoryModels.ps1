@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceMemoryModels -DeviceMemoryModelId 326
     Function gets DeviceMemoryModelId from GLPI which is provided through -DeviceMemoryModelId after Function type, and return Device Memory Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceMemoryModels -DeviceMemoryModelId 326, 321
     Function gets Device Memory Models Id from GLPI which is provided through -DeviceMemoryModelId keyword after Function type (u can provide many ID's like that), and return Device Memory Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsDeviceMemoryModels {
             ParameterSetName = "DeviceMemoryModelId")]
         [alias('DMMID')]
         [string[]]$DeviceMemoryModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DeviceMemoryModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DeviceMemoryModelName")]
         [alias('DMMN')]
-        [string]$DeviceMemoryModelName
+        [string]$DeviceMemoryModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsDeviceMemoryModels {
 
         $DeviceMemoryModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsDeviceMemoryModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/DeviceMemoryModel/?range=0-9999999999999"
                 }
-                
+
                 $DeviceMemoryModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DeviceMemoryModel in $DeviceMemoryModelsAll) {
                     $DeviceMemoryModelHash = [ordered]@{ }
-                    $DeviceMemoryModelProperties = $DeviceMemoryModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DeviceMemoryModelProperties = $DeviceMemoryModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DeviceMemoryModelProp in $DeviceMemoryModelProperties) {
                         $DeviceMemoryModelHash.Add($DeviceMemoryModelProp.Name, $DeviceMemoryModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsDeviceMemoryModels {
                 $DeviceMemoryModelsArray
                 $DeviceMemoryModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DeviceMemoryModelId { 
+            DeviceMemoryModelId {
                 foreach ( $DMMId in $DeviceMemoryModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsDeviceMemoryModels {
 
                         if ($Raw) {
                             $DeviceMemoryModelHash = [ordered]@{ }
-                            $DeviceMemoryModelProperties = $DeviceMemoryModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceMemoryModelProperties = $DeviceMemoryModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceMemoryModelProp in $DeviceMemoryModelProperties) {
                                 $DeviceMemoryModelHash.Add($DeviceMemoryModelProp.Name, $DeviceMemoryModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsDeviceMemoryModels {
                             $DeviceMemoryModelsArray.Add($object)
                         } else {
                             $DeviceMemoryModelHash = [ordered]@{ }
-                            $DeviceMemoryModelProperties = $DeviceMemoryModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceMemoryModelProperties = $DeviceMemoryModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceMemoryModelProp in $DeviceMemoryModelProperties) {
 
                                 $DeviceMemoryModelPropNewValue = Get-GlpiToolsParameters -Parameter $DeviceMemoryModelProp.Name -Value $DeviceMemoryModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsDeviceMemoryModels {
                     } Catch {
 
                         Write-Verbose -Message "Device Memory Model ID = $DMMId is not found"
-                        
+
                     }
                     $DeviceMemoryModelsArray
                     $DeviceMemoryModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DeviceMemoryModelName { 
+            DeviceMemoryModelName {
                 Search-GlpiToolsItems -SearchFor DeviceMemoryModel -SearchType contains -SearchValue $DeviceMemoryModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceMemoryModel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

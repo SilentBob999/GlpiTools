@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOSEditions -OSEditionId 326
     Function gets OSEditionId from GLPI which is provided through -OSEditionId after Function type, and return OS Editions object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOSEditions -OSEditionId 326, 321
     Function gets OS EditionsId from GLPI which is provided through -OSEditionId keyword after Function type (u can provide many ID's like that), and return OS Editions object
 .EXAMPLE
@@ -53,18 +53,27 @@ function Get-GlpiToolsDropdownsOSEditions {
             ParameterSetName = "OSEditionId")]
         [alias('OSEID')]
         [string[]]$OSEditionId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "OSEditionId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "OSEditionName")]
         [alias('OSEN')]
-        [string]$OSEditionName
+        [string]$OSEditionName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
+
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +85,10 @@ function Get-GlpiToolsDropdownsOSEditions {
 
         $OSEditionsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +98,13 @@ function Get-GlpiToolsDropdownsOSEditions {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/operatingsystemedition/?range=0-9999999999999"
                 }
-                
+
                 $OSEditionsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($OSEdition in $OSEditionsAll) {
                     $OSEditionHash = [ordered]@{ }
-                    $OSEditionProperties = $OSEdition.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $OSEditionProperties = $OSEdition.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($OSEditionProp in $OSEditionProperties) {
                         $OSEditionHash.Add($OSEditionProp.Name, $OSEditionProp.Value)
                     }
@@ -105,7 +114,7 @@ function Get-GlpiToolsDropdownsOSEditions {
                 $OSEditionsArray
                 $OSEditionsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            OSEditionId { 
+            OSEditionId {
                 foreach ( $OSEId in $OSEditionId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +131,8 @@ function Get-GlpiToolsDropdownsOSEditions {
 
                         if ($Raw) {
                             $OSEditionHash = [ordered]@{ }
-                            $OSEditionProperties = $OSEdition.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OSEditionProperties = $OSEdition.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OSEditionProp in $OSEditionProperties) {
                                 $OSEditionHash.Add($OSEditionProp.Name, $OSEditionProp.Value)
                             }
@@ -131,8 +140,8 @@ function Get-GlpiToolsDropdownsOSEditions {
                             $OSEditionsArray.Add($object)
                         } else {
                             $OSEditionHash = [ordered]@{ }
-                            $OSEditionProperties = $OSEdition.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OSEditionProperties = $OSEdition.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OSEditionProp in $OSEditionProperties) {
 
                                 $OSEditionPropNewValue = Get-GlpiToolsParameters -Parameter $OSEditionProp.Name -Value $OSEditionProp.Value
@@ -145,19 +154,22 @@ function Get-GlpiToolsDropdownsOSEditions {
                     } Catch {
 
                         Write-Verbose -Message "OS Edition ID = $OSEId is not found"
-                        
+
                     }
                     $OSEditionsArray
                     $OSEditionsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            OSEditionName { 
+            OSEditionName {
                 Search-GlpiToolsItems -SearchFor Operatingsystemedition -SearchType contains -SearchValue $OSEditionName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Operatingsystemedition" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsNetworkInterfaces -NetworkInterfaceId 326
     Function gets NetworkInterfaceId from GLPI which is provided through -NetworkInterfaceId after Function type, and return Network Interfaces object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsNetworkInterfaces -NetworkInterfaceId 326, 321
     Function gets Network Interfaces Id from GLPI which is provided through -NetworkInterfaceId keyword after Function type (u can provide many ID's like that), and return Network Interfaces object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsNetworkInterfaces {
             ParameterSetName = "NetworkInterfaceId")]
         [alias('NIID')]
         [string[]]$NetworkInterfaceId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "NetworkInterfaceId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "NetworkInterfaceName")]
         [alias('NIN')]
-        [string]$NetworkInterfaceName
+        [string]$NetworkInterfaceName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsNetworkInterfaces {
 
         $NetworkInterfacesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsNetworkInterfaces {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/networkinterface/?range=0-9999999999999"
                 }
-                
+
                 $NetworkInterfacesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($NetworkInterface in $NetworkInterfacesAll) {
                     $NetworkInterfaceHash = [ordered]@{ }
-                    $NetworkInterfaceProperties = $NetworkInterface.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $NetworkInterfaceProperties = $NetworkInterface.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($NetworkInterfaceProp in $NetworkInterfaceProperties) {
                         $NetworkInterfaceHash.Add($NetworkInterfaceProp.Name, $NetworkInterfaceProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsNetworkInterfaces {
                 $NetworkInterfacesArray
                 $NetworkInterfacesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            NetworkInterfaceId { 
+            NetworkInterfaceId {
                 foreach ( $NIId in $NetworkInterfaceId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsNetworkInterfaces {
 
                         if ($Raw) {
                             $NetworkInterfaceHash = [ordered]@{ }
-                            $NetworkInterfaceProperties = $NetworkInterface.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $NetworkInterfaceProperties = $NetworkInterface.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($NetworkInterfaceProp in $NetworkInterfaceProperties) {
                                 $NetworkInterfaceHash.Add($NetworkInterfaceProp.Name, $NetworkInterfaceProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsNetworkInterfaces {
                             $NetworkInterfacesArray.Add($object)
                         } else {
                             $NetworkInterfaceHash = [ordered]@{ }
-                            $NetworkInterfaceProperties = $NetworkInterface.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $NetworkInterfaceProperties = $NetworkInterface.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($NetworkInterfaceProp in $NetworkInterfaceProperties) {
 
                                 $NetworkInterfacePropNewValue = Get-GlpiToolsParameters -Parameter $NetworkInterfaceProp.Name -Value $NetworkInterfaceProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsNetworkInterfaces {
                     } Catch {
 
                         Write-Verbose -Message "Network Interface ID = $NIId is not found"
-                        
+
                     }
                     $NetworkInterfacesArray
                     $NetworkInterfacesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            NetworkInterfaceName { 
+            NetworkInterfaceName {
                 Search-GlpiToolsItems -SearchFor networkinterface -SearchType contains -SearchValue $NetworkInterfaceName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "networkinterface" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

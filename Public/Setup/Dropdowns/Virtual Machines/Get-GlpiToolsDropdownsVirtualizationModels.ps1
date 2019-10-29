@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsVirtualizationModels -VirtualizationModelId 326
     Function gets VirtualizationModelId from GLPI which is provided through -VirtualizationModelId after Function type, and return Virtualization Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsVirtualizationModels -VirtualizationModelId 326, 321
     Function gets Virtualization Models Id from GLPI which is provided through -VirtualizationModelId keyword after Function type (u can provide many ID's like that), and return Virtualization Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsVirtualizationModels {
             ParameterSetName = "VirtualizationModelId")]
         [alias('VMID')]
         [string[]]$VirtualizationModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "VirtualizationModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "VirtualizationModelName")]
         [alias('VMN')]
-        [string]$VirtualizationModelName
+        [string]$VirtualizationModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsVirtualizationModels {
 
         $VirtualizationModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsVirtualizationModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/virtualmachinesystem/?range=0-9999999999999"
                 }
-                
+
                 $VirtualizationModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($VirtualizationModel in $VirtualizationModelsAll) {
                     $VirtualizationModelHash = [ordered]@{ }
-                    $VirtualizationModelProperties = $VirtualizationModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $VirtualizationModelProperties = $VirtualizationModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($VirtualizationModelProp in $VirtualizationModelProperties) {
                         $VirtualizationModelHash.Add($VirtualizationModelProp.Name, $VirtualizationModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsVirtualizationModels {
                 $VirtualizationModelsArray
                 $VirtualizationModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            VirtualizationModelId { 
+            VirtualizationModelId {
                 foreach ( $VMId in $VirtualizationModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsVirtualizationModels {
 
                         if ($Raw) {
                             $VirtualizationModelHash = [ordered]@{ }
-                            $VirtualizationModelProperties = $VirtualizationModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $VirtualizationModelProperties = $VirtualizationModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($VirtualizationModelProp in $VirtualizationModelProperties) {
                                 $VirtualizationModelHash.Add($VirtualizationModelProp.Name, $VirtualizationModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsVirtualizationModels {
                             $VirtualizationModelsArray.Add($object)
                         } else {
                             $VirtualizationModelHash = [ordered]@{ }
-                            $VirtualizationModelProperties = $VirtualizationModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $VirtualizationModelProperties = $VirtualizationModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($VirtualizationModelProp in $VirtualizationModelProperties) {
 
                                 $VirtualizationModelPropNewValue = Get-GlpiToolsParameters -Parameter $VirtualizationModelProp.Name -Value $VirtualizationModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsVirtualizationModels {
                     } Catch {
 
                         Write-Verbose -Message "Virtualization Model ID = $VMId is not found"
-                        
+
                     }
                     $VirtualizationModelsArray
                     $VirtualizationModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            VirtualizationModelName { 
+            VirtualizationModelName {
                 Search-GlpiToolsItems -SearchFor virtualmachinesystem -SearchType contains -SearchValue $VirtualizationModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "virtualmachinesystem" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

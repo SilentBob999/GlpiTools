@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsPeripheralModels -PeripheralModelId 326
     Function gets PeripheralModelId from GLPI which is provided through -PeripheralModelId after Function type, and return Peripheral Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsPeripheralModels -PeripheralModelId 326, 321
     Function gets Peripheral Models Id from GLPI which is provided through -PeripheralModelId keyword after Function type (u can provide many ID's like that), and return Peripheral Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsPeripheralModels {
             ParameterSetName = "PeripheralModelId")]
         [alias('PMID')]
         [string[]]$PeripheralModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "PeripheralModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "PeripheralModelName")]
         [alias('PMN')]
-        [string]$PeripheralModelName
+        [string]$PeripheralModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsPeripheralModels {
 
         $PeripheralModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsPeripheralModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/peripheralmodel/?range=0-9999999999999"
                 }
-                
+
                 $PeripheralModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($PeripheralModel in $PeripheralModelsAll) {
                     $PeripheralModelHash = [ordered]@{ }
-                    $PeripheralModelProperties = $PeripheralModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $PeripheralModelProperties = $PeripheralModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($PeripheralModelProp in $PeripheralModelProperties) {
                         $PeripheralModelHash.Add($PeripheralModelProp.Name, $PeripheralModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsPeripheralModels {
                 $PeripheralModelsArray
                 $PeripheralModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            PeripheralModelId { 
+            PeripheralModelId {
                 foreach ( $PMId in $PeripheralModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsPeripheralModels {
 
                         if ($Raw) {
                             $PeripheralModelHash = [ordered]@{ }
-                            $PeripheralModelProperties = $PeripheralModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PeripheralModelProperties = $PeripheralModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PeripheralModelProp in $PeripheralModelProperties) {
                                 $PeripheralModelHash.Add($PeripheralModelProp.Name, $PeripheralModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsPeripheralModels {
                             $PeripheralModelsArray.Add($object)
                         } else {
                             $PeripheralModelHash = [ordered]@{ }
-                            $PeripheralModelProperties = $PeripheralModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PeripheralModelProperties = $PeripheralModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PeripheralModelProp in $PeripheralModelProperties) {
 
                                 $PeripheralModelPropNewValue = Get-GlpiToolsParameters -Parameter $PeripheralModelProp.Name -Value $PeripheralModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsPeripheralModels {
                     } Catch {
 
                         Write-Verbose -Message "Peripheral Model ID = $PMId is not found"
-                        
+
                     }
                     $PeripheralModelsArray
                     $PeripheralModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            PeripheralModelName { 
+            PeripheralModelName {
                 Search-GlpiToolsItems -SearchFor peripheralmodel -SearchType contains -SearchValue $PeripheralModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "peripheralmodel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

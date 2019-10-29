@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsStatesOfTheVirtualMachine -StateOfTheVirtualMachineId 326
     Function gets StateOfTheVirtualMachineId from GLPI which is provided through -StateOfTheVirtualMachineId after Function type, and return States of the virtual machine object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsStatesOfTheVirtualMachine -StateOfTheVirtualMachineId 326, 321
     Function gets States of the virtual machine Id from GLPI which is provided through -StateOfTheVirtualMachineId keyword after Function type (u can provide many ID's like that), and return States of the virtual machine object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsStatesOfTheVirtualMachine {
             ParameterSetName = "StateOfTheVirtualMachineId")]
         [alias('SOTVMID')]
         [string[]]$StateOfTheVirtualMachineId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "StateOfTheVirtualMachineId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "StateOfTheVirtualMachineName")]
         [alias('SOTVMN')]
-        [string]$StateOfTheVirtualMachineName
+        [string]$StateOfTheVirtualMachineName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsStatesOfTheVirtualMachine {
 
         $StatesOfTheVirtualMachineArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsStatesOfTheVirtualMachine {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/virtualmachinestate/?range=0-9999999999999"
                 }
-                
+
                 $StatesOfTheVirtualMachineAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($StateOfTheVirtualMachine in $StatesOfTheVirtualMachineAll) {
                     $StateOfTheVirtualMachineHash = [ordered]@{ }
-                    $StateOfTheVirtualMachineProperties = $StateOfTheVirtualMachine.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $StateOfTheVirtualMachineProperties = $StateOfTheVirtualMachine.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($StateOfTheVirtualMachineProp in $StateOfTheVirtualMachineProperties) {
                         $StateOfTheVirtualMachineHash.Add($StateOfTheVirtualMachineProp.Name, $StateOfTheVirtualMachineProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsStatesOfTheVirtualMachine {
                 $StatesOfTheVirtualMachineArray
                 $StatesOfTheVirtualMachineArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            StateOfTheVirtualMachineId { 
+            StateOfTheVirtualMachineId {
                 foreach ( $SOTVMId in $StateOfTheVirtualMachineId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsStatesOfTheVirtualMachine {
 
                         if ($Raw) {
                             $StateOfTheVirtualMachineHash = [ordered]@{ }
-                            $StateOfTheVirtualMachineProperties = $StateOfTheVirtualMachine.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $StateOfTheVirtualMachineProperties = $StateOfTheVirtualMachine.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($StateOfTheVirtualMachineProp in $StateOfTheVirtualMachineProperties) {
                                 $StateOfTheVirtualMachineHash.Add($StateOfTheVirtualMachineProp.Name, $StateOfTheVirtualMachineProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsStatesOfTheVirtualMachine {
                             $StatesOfTheVirtualMachineArray.Add($object)
                         } else {
                             $StateOfTheVirtualMachineHash = [ordered]@{ }
-                            $StateOfTheVirtualMachineProperties = $StateOfTheVirtualMachine.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $StateOfTheVirtualMachineProperties = $StateOfTheVirtualMachine.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($StateOfTheVirtualMachineProp in $StateOfTheVirtualMachineProperties) {
 
                                 $StateOfTheVirtualMachinePropNewValue = Get-GlpiToolsParameters -Parameter $StateOfTheVirtualMachineProp.Name -Value $StateOfTheVirtualMachineProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsStatesOfTheVirtualMachine {
                     } Catch {
 
                         Write-Verbose -Message "State Of The Virtual Machine ID = $SOTVMId is not found"
-                        
+
                     }
                     $StatesOfTheVirtualMachineArray
                     $StatesOfTheVirtualMachineArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            StateOfTheVirtualMachineName { 
+            StateOfTheVirtualMachineName {
                 Search-GlpiToolsItems -SearchFor virtualmachinestate -SearchType contains -SearchValue $StateOfTheVirtualMachineName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "virtualmachinestate" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

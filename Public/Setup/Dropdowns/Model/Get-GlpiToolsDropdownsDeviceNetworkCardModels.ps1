@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceNetworkCardModels -DeviceNetworkCardModelId 326
     Function gets DeviceNetworkCardModelId from GLPI which is provided through -DeviceNetworkCardModelId after Function type, and return Device Network Card Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceNetworkCardModels -DeviceNetworkCardModelId 326, 321
     Function gets Device Network Card Models Id from GLPI which is provided through -DeviceNetworkCardModelId keyword after Function type (u can provide many ID's like that), and return Device Network Card Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsDeviceNetworkCardModels {
             ParameterSetName = "DeviceNetworkCardModelId")]
         [alias('DNCMID')]
         [string[]]$DeviceNetworkCardModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DeviceNetworkCardModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DeviceNetworkCardModelName")]
         [alias('DNCMN')]
-        [string]$DeviceNetworkCardModelName
+        [string]$DeviceNetworkCardModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsDeviceNetworkCardModels {
 
         $DeviceNetworkCardModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsDeviceNetworkCardModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/DeviceNetworkCardModel/?range=0-9999999999999"
                 }
-                
+
                 $DeviceNetworkCardModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DeviceNetworkCardModel in $DeviceNetworkCardModelsAll) {
                     $DeviceNetworkCardModelHash = [ordered]@{ }
-                    $DeviceNetworkCardModelProperties = $DeviceNetworkCardModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DeviceNetworkCardModelProperties = $DeviceNetworkCardModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DeviceNetworkCardModelProp in $DeviceNetworkCardModelProperties) {
                         $DeviceNetworkCardModelHash.Add($DeviceNetworkCardModelProp.Name, $DeviceNetworkCardModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsDeviceNetworkCardModels {
                 $DeviceNetworkCardModelsArray
                 $DeviceNetworkCardModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DeviceNetworkCardModelId { 
+            DeviceNetworkCardModelId {
                 foreach ( $DNCMId in $DeviceNetworkCardModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsDeviceNetworkCardModels {
 
                         if ($Raw) {
                             $DeviceNetworkCardModelHash = [ordered]@{ }
-                            $DeviceNetworkCardModelProperties = $DeviceNetworkCardModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceNetworkCardModelProperties = $DeviceNetworkCardModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceNetworkCardModelProp in $DeviceNetworkCardModelProperties) {
                                 $DeviceNetworkCardModelHash.Add($DeviceNetworkCardModelProp.Name, $DeviceNetworkCardModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsDeviceNetworkCardModels {
                             $DeviceNetworkCardModelsArray.Add($object)
                         } else {
                             $DeviceNetworkCardModelHash = [ordered]@{ }
-                            $DeviceNetworkCardModelProperties = $DeviceNetworkCardModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceNetworkCardModelProperties = $DeviceNetworkCardModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceNetworkCardModelProp in $DeviceNetworkCardModelProperties) {
 
                                 $DeviceNetworkCardModelPropNewValue = Get-GlpiToolsParameters -Parameter $DeviceNetworkCardModelProp.Name -Value $DeviceNetworkCardModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsDeviceNetworkCardModels {
                     } Catch {
 
                         Write-Verbose -Message "Device Network Card Model ID = $DNCMId is not found"
-                        
+
                     }
                     $DeviceNetworkCardModelsArray
                     $DeviceNetworkCardModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DeviceNetworkCardModelName { 
+            DeviceNetworkCardModelName {
                 Search-GlpiToolsItems -SearchFor DeviceNetworkCardModel -SearchType contains -SearchValue $DeviceNetworkCardModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceNetworkCardModel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

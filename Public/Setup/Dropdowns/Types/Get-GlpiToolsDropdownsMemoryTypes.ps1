@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsMemoryTypes -MemoryTypeId 326
     Function gets MemoryTypeId from GLPI which is provided through -MemoryTypeId after Function type, and return Memory Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsMemoryTypes -MemoryTypeId 326, 321
     Function gets Memory Types Id from GLPI which is provided through -MemoryTypeId keyword after Function type (u can provide many ID's like that), and return Memory Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsMemoryTypes {
             ParameterSetName = "MemoryTypeId")]
         [alias('MTID')]
         [string[]]$MemoryTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "MemoryTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "MemoryTypeName")]
         [alias('MTN')]
-        [string]$MemoryTypeName
+        [string]$MemoryTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsMemoryTypes {
 
         $MemoryTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsMemoryTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/DeviceMemoryType/?range=0-9999999999999"
                 }
-                
+
                 $MemoryTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($MemoryType in $MemoryTypesAll) {
                     $MemoryTypeHash = [ordered]@{ }
-                    $MemoryTypeProperties = $MemoryType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $MemoryTypeProperties = $MemoryType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($MemoryTypeProp in $MemoryTypeProperties) {
                         $MemoryTypeHash.Add($MemoryTypeProp.Name, $MemoryTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsMemoryTypes {
                 $MemoryTypesArray
                 $MemoryTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            MemoryTypeId { 
+            MemoryTypeId {
                 foreach ( $MTId in $MemoryTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsMemoryTypes {
 
                         if ($Raw) {
                             $MemoryTypeHash = [ordered]@{ }
-                            $MemoryTypeProperties = $MemoryType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $MemoryTypeProperties = $MemoryType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($MemoryTypeProp in $MemoryTypeProperties) {
                                 $MemoryTypeHash.Add($MemoryTypeProp.Name, $MemoryTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsMemoryTypes {
                             $MemoryTypesArray.Add($object)
                         } else {
                             $MemoryTypeHash = [ordered]@{ }
-                            $MemoryTypeProperties = $MemoryType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $MemoryTypeProperties = $MemoryType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($MemoryTypeProp in $MemoryTypeProperties) {
 
                                 $MemoryTypePropNewValue = Get-GlpiToolsParameters -Parameter $MemoryTypeProp.Name -Value $MemoryTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsMemoryTypes {
                     } Catch {
 
                         Write-Verbose -Message "Memory Type ID = $MTId is not found"
-                        
+
                     }
                     $MemoryTypesArray
                     $MemoryTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            MemoryTypeName { 
+            MemoryTypeName {
                 Search-GlpiToolsItems -SearchFor DeviceMemoryType -SearchType contains -SearchValue $MemoryTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceMemoryType" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

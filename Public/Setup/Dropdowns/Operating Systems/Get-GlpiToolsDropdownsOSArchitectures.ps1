@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOSArchitectures -OSArchitectureId 326
     Function gets OSArchitectureId from GLPI which is provided through -OSArchitectureId after Function type, and return Architectures Packs object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOSArchitectures -OSArchitectureId 326, 321
     Function gets Architectures PacksId from GLPI which is provided through -OSArchitectureId keyword after Function type (u can provide many ID's like that), and return Architectures Packs object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsOSArchitectures {
             ParameterSetName = "OSArchitectureId")]
         [alias('OSAID')]
         [string[]]$OSArchitectureId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "OSArchitectureId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "OSArchitectureName")]
         [alias('OSAN')]
-        [string]$OSArchitectureName
+        [string]$OSArchitectureName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsOSArchitectures {
 
         $OSArchitecturesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsOSArchitectures {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/operatingsystemarchitecture/?range=0-9999999999999"
                 }
-                
+
                 $OSArchitectureAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($OSArchitecture in $OSArchitectureAll) {
                     $OSArchitectureHash = [ordered]@{ }
-                    $OSArchitectureProperties = $OSArchitecture.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $OSArchitectureProperties = $OSArchitecture.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($OSArchitectureProp in $OSArchitectureProperties) {
                         $OSArchitectureHash.Add($OSArchitectureProp.Name, $OSArchitectureProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsOSArchitectures {
                 $OSArchitecturesArray
                 $OSArchitecturesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            OSArchitectureId { 
+            OSArchitectureId {
                 foreach ( $OSAId in $OSArchitectureId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsOSArchitectures {
 
                         if ($Raw) {
                             $OSArchitectureHash = [ordered]@{ }
-                            $OSArchitectureProperties = $OSArchitecture.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OSArchitectureProperties = $OSArchitecture.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OSArchitectureProp in $OSArchitectureProperties) {
                                 $OSArchitectureHash.Add($OSArchitectureProp.Name, $OSArchitectureProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsOSArchitectures {
                             $OSArchitecturesArray.Add($object)
                         } else {
                             $OSArchitectureHash = [ordered]@{ }
-                            $OSArchitectureProperties = $OSArchitecture.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OSArchitectureProperties = $OSArchitecture.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OSArchitectureProp in $OSArchitectureProperties) {
 
                                 $OSArchitecturePropNewValue = Get-GlpiToolsParameters -Parameter $OSArchitectureProp.Name -Value $OSArchitectureProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsOSArchitectures {
                     } Catch {
 
                         Write-Verbose -Message "Architectures ID = $OSAId is not found"
-                        
+
                     }
                     $OSArchitecturesArray
                     $OSArchitecturesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            OSArchitectureName { 
+            OSArchitectureName {
                 Search-GlpiToolsItems -SearchFor Operatingsystemarchitecture -SearchType contains -SearchValue $OSArchitectureName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Operatingsystemarchitecture" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

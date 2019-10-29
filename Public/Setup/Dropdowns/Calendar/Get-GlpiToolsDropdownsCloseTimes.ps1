@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsCloseTimes -CloseTimeId 326
     Function gets CloseTimeId from GLPI which is provided through -CloseTimeId after Function type, and return Close Times object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsCloseTimes -CloseTimeId 326, 321
     Function gets Close Times Id from GLPI which is provided through -CloseTimeId keyword after Function type (u can provide many ID's like that), and return Close Times object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsCloseTimes {
             ParameterSetName = "CloseTimeId")]
         [alias('CTID')]
         [string[]]$CloseTimeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "CloseTimeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "CloseTimeName")]
         [alias('CTN')]
-        [string]$CloseTimeName
+        [string]$CloseTimeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsCloseTimes {
 
         $CloseTimesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsCloseTimes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/holiday/?range=0-9999999999999"
                 }
-                
+
                 $CloseTimesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($CloseTime in $CloseTimesAll) {
                     $CloseTimeHash = [ordered]@{ }
-                    $CloseTimeProperties = $CloseTime.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $CloseTimeProperties = $CloseTime.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($CloseTimeProp in $CloseTimeProperties) {
                         $CloseTimeHash.Add($CloseTimeProp.Name, $CloseTimeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsCloseTimes {
                 $CloseTimesArray
                 $CloseTimesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            CloseTimeId { 
+            CloseTimeId {
                 foreach ( $CTId in $CloseTimeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsCloseTimes {
 
                         if ($Raw) {
                             $CloseTimeHash = [ordered]@{ }
-                            $CloseTimeProperties = $CloseTime.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $CloseTimeProperties = $CloseTime.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($CloseTimeProp in $CloseTimeProperties) {
                                 $CloseTimeHash.Add($CloseTimeProp.Name, $CloseTimeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsCloseTimes {
                             $CloseTimesArray.Add($object)
                         } else {
                             $CloseTimeHash = [ordered]@{ }
-                            $CloseTimeProperties = $CloseTime.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $CloseTimeProperties = $CloseTime.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($CloseTimeProp in $CloseTimeProperties) {
 
                                 $CloseTimePropNewValue = Get-GlpiToolsParameters -Parameter $CloseTimeProp.Name -Value $CloseTimeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsCloseTimes {
                     } Catch {
 
                         Write-Verbose -Message "Close Time ID = $CTId is not found"
-                        
+
                     }
                     $CloseTimesArray
                     $CloseTimesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            CloseTimeName { 
+            CloseTimeName {
                 Search-GlpiToolsItems -SearchFor holiday -SearchType contains -SearchValue $CloseTimeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "holiday" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

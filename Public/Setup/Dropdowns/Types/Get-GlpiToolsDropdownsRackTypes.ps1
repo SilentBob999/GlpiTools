@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsRackTypes -RackTypeId 326
     Function gets RackTypeId from GLPI which is provided through -RackTypeId after Function type, and return Rack Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsRackTypes -RackTypeId 326, 321
     Function gets Rack Types Id from GLPI which is provided through -RackTypeId keyword after Function type (u can provide many ID's like that), and return Rack Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsRackTypes {
             ParameterSetName = "RackTypeId")]
         [alias('RTID')]
         [string[]]$RackTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "RackTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "RackTypeName")]
         [alias('RTN')]
-        [string]$RackTypeName
+        [string]$RackTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsRackTypes {
 
         $RackTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsRackTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Racktype/?range=0-9999999999999"
                 }
-                
+
                 $RackTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($RackType in $RackTypesAll) {
                     $RackTypeHash = [ordered]@{ }
-                    $RackTypeProperties = $RackType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $RackTypeProperties = $RackType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($RackTypeProp in $RackTypeProperties) {
                         $RackTypeHash.Add($RackTypeProp.Name, $RackTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsRackTypes {
                 $RackTypesArray
                 $RackTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            RackTypeId { 
+            RackTypeId {
                 foreach ( $RTId in $RackTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsRackTypes {
 
                         if ($Raw) {
                             $RackTypeHash = [ordered]@{ }
-                            $RackTypeProperties = $RackType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $RackTypeProperties = $RackType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($RackTypeProp in $RackTypeProperties) {
                                 $RackTypeHash.Add($RackTypeProp.Name, $RackTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsRackTypes {
                             $RackTypesArray.Add($object)
                         } else {
                             $RackTypeHash = [ordered]@{ }
-                            $RackTypeProperties = $RackType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $RackTypeProperties = $RackType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($RackTypeProp in $RackTypeProperties) {
 
                                 $RackTypePropNewValue = Get-GlpiToolsParameters -Parameter $RackTypeProp.Name -Value $RackTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsRackTypes {
                     } Catch {
 
                         Write-Verbose -Message "Rack Type ID = $RTId is not found"
-                        
+
                     }
                     $RackTypesArray
                     $RackTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            RackTypeName { 
+            RackTypeName {
                 Search-GlpiToolsItems -SearchFor Racktype -SearchType contains -SearchValue $RackTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Racktype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

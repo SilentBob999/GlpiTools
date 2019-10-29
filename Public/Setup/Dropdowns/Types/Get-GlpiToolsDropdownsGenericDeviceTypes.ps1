@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsGenericDeviceTypes -GenericDeviceTypeId 326
     Function gets GenericDeviceTypeId from GLPI which is provided through -GenericDeviceTypeId after Function type, and return Generic Device Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsGenericDeviceTypes -GenericDeviceTypeId 326, 321
     Function gets Generic Device Types Id from GLPI which is provided through -GenericDeviceTypeId keyword after Function type (u can provide many ID's like that), and return Generic Device Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsGenericDeviceTypes {
             ParameterSetName = "GenericDeviceTypeId")]
         [alias('GDTID')]
         [string[]]$GenericDeviceTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "GenericDeviceTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "GenericDeviceTypeName")]
         [alias('GDTN')]
-        [string]$GenericDeviceTypeName
+        [string]$GenericDeviceTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsGenericDeviceTypes {
 
         $GenericDeviceTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsGenericDeviceTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/DeviceGenericType/?range=0-9999999999999"
                 }
-                
+
                 $GenericDeviceTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GenericDeviceType in $GenericDeviceTypesAll) {
                     $GenericDeviceTypeHash = [ordered]@{ }
-                    $GenericDeviceTypeProperties = $GenericDeviceType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $GenericDeviceTypeProperties = $GenericDeviceType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($GenericDeviceTypeProp in $GenericDeviceTypeProperties) {
                         $GenericDeviceTypeHash.Add($GenericDeviceTypeProp.Name, $GenericDeviceTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsGenericDeviceTypes {
                 $GenericDeviceTypesArray
                 $GenericDeviceTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            GenericDeviceTypeId { 
+            GenericDeviceTypeId {
                 foreach ( $GDTId in $GenericDeviceTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsGenericDeviceTypes {
 
                         if ($Raw) {
                             $GenericDeviceTypeHash = [ordered]@{ }
-                            $GenericDeviceTypeProperties = $GenericDeviceType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $GenericDeviceTypeProperties = $GenericDeviceType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($GenericDeviceTypeProp in $GenericDeviceTypeProperties) {
                                 $GenericDeviceTypeHash.Add($GenericDeviceTypeProp.Name, $GenericDeviceTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsGenericDeviceTypes {
                             $GenericDeviceTypesArray.Add($object)
                         } else {
                             $GenericDeviceTypeHash = [ordered]@{ }
-                            $GenericDeviceTypeProperties = $GenericDeviceType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $GenericDeviceTypeProperties = $GenericDeviceType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($GenericDeviceTypeProp in $GenericDeviceTypeProperties) {
 
                                 $GenericDeviceTypePropNewValue = Get-GlpiToolsParameters -Parameter $GenericDeviceTypeProp.Name -Value $GenericDeviceTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsGenericDeviceTypes {
                     } Catch {
 
                         Write-Verbose -Message "Generic Device Type ID = $GDTId is not found"
-                        
+
                     }
                     $GenericDeviceTypesArray
                     $GenericDeviceTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            GenericDeviceTypeName { 
+            GenericDeviceTypeName {
                 Search-GlpiToolsItems -SearchFor DeviceGenericType -SearchType contains -SearchValue $GenericDeviceTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceGenericType" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

@@ -18,7 +18,7 @@
     Parameter which you can use with ChangeName Parameter.
     If you want Search for Change name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with ChangeId Parameter. 
+    Parameter which you can use with ChangeId Parameter.
     If you want to get additional parameter of Change object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsChanges
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsChanges -ChangeId 326
     Function gets ChangeID from GLPI which is provided through -ChangeId after Function type, and return Change object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsChanges -ChangeId 326, 321
     Function gets ChangeID from GLPI which is provided through -ChangeId keyword after Function type (u can provide many ID's like that), and return Change object
 .EXAMPLE
@@ -65,6 +65,9 @@ function Get-GlpiToolsChanges {
             ParameterSetName = "ChangeId")]
         [alias('CID')]
         [string[]]$ChangeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ChangeId")]
         [switch]$Raw,
@@ -94,9 +97,14 @@ function Get-GlpiToolsChanges {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter
+        [string]$Parameter,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
 
         $AppToken = $Script:AppToken
@@ -119,19 +127,19 @@ function Get-GlpiToolsChanges {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithChanges { $ParamValue = "?with_Changes=true" } 
+            WithChanges { $ParamValue = "?with_Changes=true" }
             WithChanges { $ParamValue = "?with_Changes=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" } 
+            WithNotes { $ParamValue = "?with_notes=true" }
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -141,13 +149,13 @@ function Get-GlpiToolsChanges {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Change/?range=0-9999999999999"
                 }
-                
+
                 $GlpiChangeAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiChange in $GlpiChangeAll) {
                     $ChangeHash = [ordered]@{ }
-                            $ChangeProperties = $GlpiChange.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ChangeProperties = $GlpiChange.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ChangeProp in $ChangeProperties) {
                                 $ChangeHash.Add($ChangeProp.Name, $ChangeProp.Value)
                             }
@@ -157,7 +165,7 @@ function Get-GlpiToolsChanges {
                 $ChangeObjectArray
                 $ChangeObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ChangeId { 
+            ChangeId {
                 foreach ( $CId in $ChangeId ) {
                     $params = @{
                         headers = @{
@@ -174,8 +182,8 @@ function Get-GlpiToolsChanges {
 
                         if ($Raw) {
                             $ChangeHash = [ordered]@{ }
-                            $ChangeProperties = $GlpiChange.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ChangeProperties = $GlpiChange.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ChangeProp in $ChangeProperties) {
                                 $ChangeHash.Add($ChangeProp.Name, $ChangeProp.Value)
                             }
@@ -183,8 +191,8 @@ function Get-GlpiToolsChanges {
                             $ChangeObjectArray.Add($object)
                         } else {
                             $ChangeHash = [ordered]@{ }
-                            $ChangeProperties = $GlpiChange.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ChangeProperties = $GlpiChange.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ChangeProp in $ChangeProperties) {
 
                                 switch ($ChangeProp.Name) {
@@ -195,7 +203,7 @@ function Get-GlpiToolsChanges {
                                         $ChangePropNewValue = $ChangeProp.Value
                                     }
                                 }
-                                
+
                                 $ChangeHash.Add($ChangeProp.Name, $ChangePropNewValue)
                             }
                             $object = [pscustomobject]$ChangeHash
@@ -204,21 +212,24 @@ function Get-GlpiToolsChanges {
                     } Catch {
 
                         Write-Verbose -Message "Change ID = $CId is not found"
-                        
+
                     }
                     $ChangeObjectArray
                     $ChangeObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ChangeName { 
+            ChangeName {
                 Search-GlpiToolsItems -SearchFor Change -SearchType contains -SearchValue $ChangeName -SearchInTrash $SearchInTrash
             }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Change" -SearchText $SearchText -raw $Raw
+            }
             Default {
-                
+
             }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

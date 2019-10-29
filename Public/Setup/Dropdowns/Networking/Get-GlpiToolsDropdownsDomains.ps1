@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDomains -DomainId 326
     Function gets DomainId from GLPI which is provided through -DomainId after Function type, and return Domain object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDomains -DomainId 326, 321
     Function gets DomainId from GLPI which is provided through -DomainId keyword after Function type (u can provide many ID's like that), and return Domain object
 .EXAMPLE
@@ -53,18 +53,27 @@ function Get-GlpiToolsDropdownsDomains {
             ParameterSetName = "DomainId")]
         [alias('DID')]
         [string[]]$DomainId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DomainId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DomainName")]
         [alias('DN')]
-        [string]$DomainName
+        [string]$DomainName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
+
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +85,10 @@ function Get-GlpiToolsDropdownsDomains {
 
         $DomainArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +98,13 @@ function Get-GlpiToolsDropdownsDomains {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Domain/?range=0-9999999999999"
                 }
-                
+
                 $GlpiDomainAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DomainModel in $GlpiDomainAll) {
                     $DomainHash = [ordered]@{ }
-                    $DomainProperties = $DomainModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DomainProperties = $DomainModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DomainProp in $DomainProperties) {
                         $DomainHash.Add($DomainProp.Name, $DomainProp.Value)
                     }
@@ -105,7 +114,7 @@ function Get-GlpiToolsDropdownsDomains {
                 $DomainArray
                 $DomainArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DomainId { 
+            DomainId {
                 foreach ( $DId in $DomainId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +131,8 @@ function Get-GlpiToolsDropdownsDomains {
 
                         if ($Raw) {
                             $DomainHash = [ordered]@{ }
-                            $DomainProperties = $DomainModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DomainProperties = $DomainModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DomainProp in $DomainProperties) {
                                 $DomainHash.Add($DomainProp.Name, $DomainProp.Value)
                             }
@@ -131,8 +140,8 @@ function Get-GlpiToolsDropdownsDomains {
                             $DomainArray.Add($object)
                         } else {
                             $DomainHash = [ordered]@{ }
-                            $DomainProperties = $DomainModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DomainProperties = $DomainModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DomainProp in $DomainProperties) {
 
                                 switch ($DomainProp.Name) {
@@ -147,19 +156,22 @@ function Get-GlpiToolsDropdownsDomains {
                     } Catch {
 
                         Write-Verbose -Message "Domain ID = $DId is not found"
-                        
+
                     }
                     $DomainArray
                     $DomainArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DomainName { 
-                Search-GlpiToolsItems -SearchFor Domain -SearchType contains -SearchValue $DomainName 
-            } 
+            DomainName {
+                Search-GlpiToolsItems -SearchFor Domain -SearchType contains -SearchValue $DomainName
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Domain" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

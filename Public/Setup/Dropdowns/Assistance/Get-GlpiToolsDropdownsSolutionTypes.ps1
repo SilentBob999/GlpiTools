@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsSolutionTypes -SolutionTypesId 326
     Function gets SolutionTypesId from GLPI which is provided through -SolutionTypesId after Function type, and return Solution Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsSolutionTypes -SolutionTypesId 326, 321
     Function gets Solution Types Id from GLPI which is provided through -SolutionTypesId keyword after Function type (u can provide many ID's like that), and return Solution Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsSolutionTypes {
             ParameterSetName = "SolutionTypesId")]
         [alias('STID')]
         [string[]]$SolutionTypesId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "SolutionTypesId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "SolutionTypesName")]
         [alias('STN')]
-        [string]$SolutionTypesName
+        [string]$SolutionTypesName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsSolutionTypes {
 
         $SolutionTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsSolutionTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/solutiontype/?range=0-9999999999999"
                 }
-                
+
                 $SolutionTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($SolutionType in $SolutionTypesAll) {
                     $SolutionTypeHash = [ordered]@{ }
-                    $SolutionTypeProperties = $SolutionType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $SolutionTypeProperties = $SolutionType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($SolutionTypeProp in $SolutionTypeProperties) {
                         $SolutionTypeHash.Add($SolutionTypeProp.Name, $SolutionTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsSolutionTypes {
                 $SolutionTypesArray
                 $SolutionTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            SolutionTypesId { 
+            SolutionTypesId {
                 foreach ( $STId in $SolutionTypesId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsSolutionTypes {
 
                         if ($Raw) {
                             $SolutionTypeHash = [ordered]@{ }
-                            $SolutionTypeProperties = $SolutionType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $SolutionTypeProperties = $SolutionType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($SolutionTypeProp in $SolutionTypeProperties) {
                                 $SolutionTypeHash.Add($SolutionTypeProp.Name, $SolutionTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsSolutionTypes {
                             $SolutionTypesArray.Add($object)
                         } else {
                             $SolutionTypeHash = [ordered]@{ }
-                            $SolutionTypeProperties = $SolutionType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $SolutionTypeProperties = $SolutionType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($SolutionTypeProp in $SolutionTypeProperties) {
 
                                 $SolutionTypePropNewValue = Get-GlpiToolsParameters -Parameter $SolutionTypeProp.Name -Value $SolutionTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsSolutionTypes {
                     } Catch {
 
                         Write-Verbose -Message "Solution Type ID = $STId is not found"
-                        
+
                     }
                     $SolutionTypesArray
                     $SolutionTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            SolutionTypesName { 
+            SolutionTypesName {
                 Search-GlpiToolsItems -SearchFor solutiontype -SearchType contains -SearchValue $SolutionTypesName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Problem" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

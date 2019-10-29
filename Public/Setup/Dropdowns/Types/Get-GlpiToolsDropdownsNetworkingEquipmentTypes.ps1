@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsNetworkingEquipmentTypes -NetworkingEquipmentTypeId 326
     Function gets NetworkingEquipmentTypeId from GLPI which is provided through -NetworkingEquipmentTypeId after Function type, and return Networking Equipment Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsNetworkingEquipmentTypes -NetworkingEquipmentTypeId 326, 321
     Function gets Networking Equipment Types Id from GLPI which is provided through -NetworkingEquipmentTypeId keyword after Function type (u can provide many ID's like that), and return Networking Equipment Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsNetworkingEquipmentTypes {
             ParameterSetName = "NetworkingEquipmentTypeId")]
         [alias('NETID')]
         [string[]]$NetworkingEquipmentTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "NetworkingEquipmentTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "NetworkingEquipmentTypeName")]
         [alias('NETN')]
-        [string]$NetworkingEquipmentTypeName
+        [string]$NetworkingEquipmentTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsNetworkingEquipmentTypes {
 
         $NetworkingEquipmentTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsNetworkingEquipmentTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/networkequipmenttype/?range=0-9999999999999"
                 }
-                
+
                 $NetworkingEquipmentTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($NetworkingEquipmentType in $NetworkingEquipmentTypesAll) {
                     $NetworkingEquipmentTypeHash = [ordered]@{ }
-                    $NetworkingEquipmentTypeProperties = $NetworkingEquipmentType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $NetworkingEquipmentTypeProperties = $NetworkingEquipmentType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($NetworkingEquipmentTypeProp in $NetworkingEquipmentTypeProperties) {
                         $NetworkingEquipmentTypeHash.Add($NetworkingEquipmentTypeProp.Name, $NetworkingEquipmentTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsNetworkingEquipmentTypes {
                 $NetworkingEquipmentTypesArray
                 $NetworkingEquipmentTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            NetworkingEquipmentTypeId { 
+            NetworkingEquipmentTypeId {
                 foreach ( $NETId in $NetworkingEquipmentTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsNetworkingEquipmentTypes {
 
                         if ($Raw) {
                             $NetworkingEquipmentTypeHash = [ordered]@{ }
-                            $NetworkingEquipmentTypeProperties = $NetworkingEquipmentType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $NetworkingEquipmentTypeProperties = $NetworkingEquipmentType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($NetworkingEquipmentTypeProp in $NetworkingEquipmentTypeProperties) {
                                 $NetworkingEquipmentTypeHash.Add($NetworkingEquipmentTypeProp.Name, $NetworkingEquipmentTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsNetworkingEquipmentTypes {
                             $NetworkingEquipmentTypesArray.Add($object)
                         } else {
                             $NetworkingEquipmentTypeHash = [ordered]@{ }
-                            $NetworkingEquipmentTypeProperties = $NetworkingEquipmentType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $NetworkingEquipmentTypeProperties = $NetworkingEquipmentType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($NetworkingEquipmentTypeProp in $NetworkingEquipmentTypeProperties) {
 
                                 $NetworkingEquipmentTypePropNewValue = Get-GlpiToolsParameters -Parameter $NetworkingEquipmentTypeProp.Name -Value $NetworkingEquipmentTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsNetworkingEquipmentTypes {
                     } Catch {
 
                         Write-Verbose -Message "Networking Equipment Type ID = $NETId is not found"
-                        
+
                     }
                     $NetworkingEquipmentTypesArray
                     $NetworkingEquipmentTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            NetworkingEquipmentTypeName { 
+            NetworkingEquipmentTypeName {
                 Search-GlpiToolsItems -SearchFor networkequipmenttype -SearchType contains -SearchValue $NetworkingEquipmentTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "networkequipmenttype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

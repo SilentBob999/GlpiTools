@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsLineOperators -LineOperatorId 326
     Function gets LineOperatorId from GLPI which is provided through -LineOperatorId after Function type, and return Line Operators object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsLineOperators -LineOperatorId 326, 321
     Function gets Line Operators Id from GLPI which is provided through -LineOperatorId keyword after Function type (u can provide many ID's like that), and return Line Operators object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsLineOperators {
             ParameterSetName = "LineOperatorId")]
         [alias('LOID')]
         [string[]]$LineOperatorId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "LineOperatorId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "LineOperatorName")]
         [alias('LON')]
-        [string]$LineOperatorName
+        [string]$LineOperatorName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsLineOperators {
 
         $LineOperatorsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsLineOperators {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/lineoperator/?range=0-9999999999999"
                 }
-                
+
                 $LineOperatorsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($LineOperator in $LineOperatorsAll) {
                     $LineOperatorHash = [ordered]@{ }
-                    $LineOperatorProperties = $LineOperator.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $LineOperatorProperties = $LineOperator.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($LineOperatorProp in $LineOperatorProperties) {
                         $LineOperatorHash.Add($LineOperatorProp.Name, $LineOperatorProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsLineOperators {
                 $LineOperatorsArray
                 $LineOperatorsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            LineOperatorId { 
+            LineOperatorId {
                 foreach ( $LOId in $LineOperatorId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsLineOperators {
 
                         if ($Raw) {
                             $LineOperatorHash = [ordered]@{ }
-                            $LineOperatorProperties = $LineOperator.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $LineOperatorProperties = $LineOperator.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($LineOperatorProp in $LineOperatorProperties) {
                                 $LineOperatorHash.Add($LineOperatorProp.Name, $LineOperatorProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsLineOperators {
                             $LineOperatorsArray.Add($object)
                         } else {
                             $LineOperatorHash = [ordered]@{ }
-                            $LineOperatorProperties = $LineOperator.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $LineOperatorProperties = $LineOperator.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($LineOperatorProp in $LineOperatorProperties) {
 
                                 $LineOperatorPropNewValue = Get-GlpiToolsParameters -Parameter $LineOperatorProp.Name -Value $LineOperatorProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsLineOperators {
                     } Catch {
 
                         Write-Verbose -Message "Line Operator ID = $LOId is not found"
-                        
+
                     }
                     $LineOperatorsArray
                     $LineOperatorsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            LineOperatorName { 
+            LineOperatorName {
                 Search-GlpiToolsItems -SearchFor lineoperator -SearchType contains -SearchValue $LineOperatorName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "lineoperator" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsCalendars -CalendarId 326
     Function gets CalendarId from GLPI which is provided through -CalendarId after Function type, and return Calendars object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsCalendars -CalendarId 326, 321
     Function gets Calendars Id from GLPI which is provided through -CalendarId keyword after Function type (u can provide many ID's like that), and return Calendars object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsCalendars {
             ParameterSetName = "CalendarId")]
         [alias('CID')]
         [string[]]$CalendarId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "CalendarId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "CalendarName")]
         [alias('CN')]
-        [string]$CalendarName
+        [string]$CalendarName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsCalendars {
 
         $CalendarsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsCalendars {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/calendar/?range=0-9999999999999"
                 }
-                
+
                 $CalendarsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($Calendar in $CalendarsAll) {
                     $CalendarHash = [ordered]@{ }
-                    $CalendarProperties = $Calendar.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $CalendarProperties = $Calendar.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($CalendarProp in $CalendarProperties) {
                         $CalendarHash.Add($CalendarProp.Name, $CalendarProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsCalendars {
                 $CalendarsArray
                 $CalendarsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            CalendarId { 
+            CalendarId {
                 foreach ( $CId in $CalendarId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsCalendars {
 
                         if ($Raw) {
                             $CalendarHash = [ordered]@{ }
-                            $CalendarProperties = $Calendar.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $CalendarProperties = $Calendar.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($CalendarProp in $CalendarProperties) {
                                 $CalendarHash.Add($CalendarProp.Name, $CalendarProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsCalendars {
                             $CalendarsArray.Add($object)
                         } else {
                             $CalendarHash = [ordered]@{ }
-                            $CalendarProperties = $Calendar.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $CalendarProperties = $Calendar.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($CalendarProp in $CalendarProperties) {
 
                                 $CalendarPropNewValue = Get-GlpiToolsParameters -Parameter $CalendarProp.Name -Value $CalendarProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsCalendars {
                     } Catch {
 
                         Write-Verbose -Message "Calendar ID = $CId is not found"
-                        
+
                     }
                     $CalendarsArray
                     $CalendarsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            CalendarName { 
+            CalendarName {
                 Search-GlpiToolsItems -SearchFor calendar -SearchType contains -SearchValue $CalendarName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Problem" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

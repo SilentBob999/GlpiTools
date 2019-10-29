@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOSServicePacks -OSServicePackId 326
     Function gets OSServicePackId from GLPI which is provided through -OSServicePackId after Function type, and return Operating Systems Service Packs object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOSServicePacks -OSServicePackId 326, 321
     Function gets Operating Systems Service PacksId from GLPI which is provided through -OSServicePackId keyword after Function type (u can provide many ID's like that), and return Operating Systems Service Packs object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsOSServicePacks {
             ParameterSetName = "OSServicePackId")]
         [alias('OSSPID')]
         [string[]]$OSServicePackId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "OSServicePackId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "OSServicePackName")]
         [alias('OSPN')]
-        [string]$OSServicePackName
+        [string]$OSServicePackName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsOSServicePacks {
 
         $OSServicePacksArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsOSServicePacks {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/OperatingSystemServicePack/?range=0-9999999999999"
                 }
-                
+
                 $OSServicePacksAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($OSServicePack in $OSServicePacksAll) {
                     $OSServicePackHash = [ordered]@{ }
-                    $OSServicePackProperties = $OSServicePack.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $OSServicePackProperties = $OSServicePack.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($OSServicePackProp in $OSServicePackProperties) {
                         $OSServicePackHash.Add($OSServicePackProp.Name, $OSServicePackProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsOSServicePacks {
                 $OSServicePacksArray
                 $OSServicePacksArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            OSServicePackId { 
+            OSServicePackId {
                 foreach ( $OSSPId in $OSServicePackId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsOSServicePacks {
 
                         if ($Raw) {
                             $OSServicePackHash = [ordered]@{ }
-                            $OSServicePackProperties = $OSServicePack.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OSServicePackProperties = $OSServicePack.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OSServicePackProp in $OSServicePackProperties) {
                                 $OSServicePackHash.Add($OSServicePackProp.Name, $OSServicePackProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsOSServicePacks {
                             $OSServicePacksArray.Add($object)
                         } else {
                             $OSServicePackHash = [ordered]@{ }
-                            $OSServicePackProperties = $OSServicePack.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OSServicePackProperties = $OSServicePack.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OSServicePackProp in $OSServicePackProperties) {
 
                                 $OSServicePackPropNewValue = Get-GlpiToolsParameters -Parameter $OSServicePackProp.Name -Value $OSServicePackProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsOSServicePacks {
                     } Catch {
 
                         Write-Verbose -Message "Operating Systems Service Packs ID = $OSSPId is not found"
-                        
+
                     }
                     $OSServicePacksArray
                     $OSServicePacksArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            OSServicePackName { 
+            OSServicePackName {
                 Search-GlpiToolsItems -SearchFor OperatingSystemServicePack -SearchType contains -SearchValue $OSServicePackName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "OperatingSystemServicePack" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

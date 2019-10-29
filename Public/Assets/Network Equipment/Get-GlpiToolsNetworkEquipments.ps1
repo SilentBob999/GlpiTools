@@ -18,7 +18,7 @@
     Parameter which you can use with NetworkEquipmentName Parameter.
     If you want Search for NetworkEquipment name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with NetworkEquipmentId Parameter. 
+    Parameter which you can use with NetworkEquipmentId Parameter.
     If you want to get additional parameter of NetworkEquipment object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsNetworkEquipments
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsNetworkEquipments -NetworkEquipmentId 326
     Function gets NetworkEquipmentID from GLPI which is provided through -NetworkEquipmentId after Function type, and return NetworkEquipment object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsNetworkEquipments -NetworkEquipmentId 326, 321
     Function gets NetworkEquipmentID from GLPI which is provided through -NetworkEquipmentId keyword after Function type (u can provide many ID's like that), and return NetworkEquipment object
 .EXAMPLE
@@ -65,6 +65,9 @@ function Get-GlpiToolsNetworkEquipments {
             ParameterSetName = "NetworkEquipmentId")]
         [alias('MID')]
         [string[]]$NetworkEquipmentId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "NetworkEquipmentId")]
         [switch]$Raw,
@@ -96,9 +99,14 @@ function Get-GlpiToolsNetworkEquipments {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter
+        [string]$Parameter,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
 
         $AppToken = $Script:AppToken
@@ -123,19 +131,19 @@ function Get-GlpiToolsNetworkEquipments {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithTickets { $ParamValue = "?with_tickets=true" } 
+            WithTickets { $ParamValue = "?with_tickets=true" }
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" } 
+            WithNotes { $ParamValue = "?with_notes=true" }
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -145,13 +153,13 @@ function Get-GlpiToolsNetworkEquipments {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/NetworkEquipment/?range=0-9999999999999"
                 }
-                
+
                 $GlpiNetworkEquipmentAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiNetworkEquipment in $GlpiNetworkEquipmentAll) {
                     $NetworkEquipmentHash = [ordered]@{ }
-                            $NetworkEquipmentProperties = $GlpiNetworkEquipment.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $NetworkEquipmentProperties = $GlpiNetworkEquipment.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($NetworkEquipmentProp in $NetworkEquipmentProperties) {
                                 $NetworkEquipmentHash.Add($NetworkEquipmentProp.Name, $NetworkEquipmentProp.Value)
                             }
@@ -161,7 +169,7 @@ function Get-GlpiToolsNetworkEquipments {
                 $NetworkEquipmentObjectArray
                 $NetworkEquipmentObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            NetworkEquipmentId { 
+            NetworkEquipmentId {
                 foreach ( $NEId in $NetworkEquipmentId ) {
                     $params = @{
                         headers = @{
@@ -178,8 +186,8 @@ function Get-GlpiToolsNetworkEquipments {
 
                         if ($Raw) {
                             $NetworkEquipmentHash = [ordered]@{ }
-                            $NetworkEquipmentProperties = $GlpiNetworkEquipment.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $NetworkEquipmentProperties = $GlpiNetworkEquipment.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($NetworkEquipmentProp in $NetworkEquipmentProperties) {
                                 $NetworkEquipmentHash.Add($NetworkEquipmentProp.Name, $NetworkEquipmentProp.Value)
                             }
@@ -187,8 +195,8 @@ function Get-GlpiToolsNetworkEquipments {
                             $NetworkEquipmentObjectArray.Add($object)
                         } else {
                             $NetworkEquipmentHash = [ordered]@{ }
-                            $NetworkEquipmentProperties = $GlpiNetworkEquipment.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $NetworkEquipmentProperties = $GlpiNetworkEquipment.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($NetworkEquipmentProp in $NetworkEquipmentProperties) {
 
                                 switch ($NetworkEquipmentProp.Name) {
@@ -198,7 +206,7 @@ function Get-GlpiToolsNetworkEquipments {
                                         $NetworkEquipmentPropNewValue = $NetworkEquipmentProp.Value
                                     }
                                 }
-                                
+
                                 $NetworkEquipmentHash.Add($NetworkEquipmentProp.Name, $NetworkEquipmentPropNewValue)
                             }
                             $object = [pscustomobject]$NetworkEquipmentHash
@@ -207,21 +215,24 @@ function Get-GlpiToolsNetworkEquipments {
                     } Catch {
 
                         Write-Verbose -Message "NetworkEquipment ID = $NEId is not found"
-                        
+
                     }
                     $NetworkEquipmentObjectArray
                     $NetworkEquipmentObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            NetworkEquipmentName { 
+            NetworkEquipmentName {
                 Search-GlpiToolsItems -SearchFor NetworkEquipment -SearchType contains -SearchValue $NetworkEquipmentName -SearchInTrash $SearchInTrash
             }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "NetworkEquipment" -SearchText $SearchText -raw $Raw
+            }
             Default {
-                
+
             }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

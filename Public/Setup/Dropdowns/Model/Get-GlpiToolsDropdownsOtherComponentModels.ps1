@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOtherComponentModels -OtherComponentModelId 326
     Function gets OtherComponentModelId from GLPI which is provided through -OtherComponentModelId after Function type, and return Other Component Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsOtherComponentModels -OtherComponentModelId 326, 321
     Function gets Other Component Models Id from GLPI which is provided through -OtherComponentModelId keyword after Function type (u can provide many ID's like that), and return Other Component Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsOtherComponentModels {
             ParameterSetName = "OtherComponentModelId")]
         [alias('OCMID')]
         [string[]]$OtherComponentModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "OtherComponentModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "OtherComponentModelName")]
         [alias('OCMN')]
-        [string]$OtherComponentModelName
+        [string]$OtherComponentModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsOtherComponentModels {
 
         $OtherComponentModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsOtherComponentModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/DevicePciModel/?range=0-9999999999999"
                 }
-                
+
                 $OtherComponentModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($OtherComponentModel in $OtherComponentModelsAll) {
                     $OtherComponentModelHash = [ordered]@{ }
-                    $OtherComponentModelProperties = $OtherComponentModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $OtherComponentModelProperties = $OtherComponentModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($OtherComponentModelProp in $OtherComponentModelProperties) {
                         $OtherComponentModelHash.Add($OtherComponentModelProp.Name, $OtherComponentModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsOtherComponentModels {
                 $OtherComponentModelsArray
                 $OtherComponentModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            OtherComponentModelId { 
+            OtherComponentModelId {
                 foreach ( $OCMId in $OtherComponentModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsOtherComponentModels {
 
                         if ($Raw) {
                             $OtherComponentModelHash = [ordered]@{ }
-                            $OtherComponentModelProperties = $OtherComponentModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OtherComponentModelProperties = $OtherComponentModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OtherComponentModelProp in $OtherComponentModelProperties) {
                                 $OtherComponentModelHash.Add($OtherComponentModelProp.Name, $OtherComponentModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsOtherComponentModels {
                             $OtherComponentModelsArray.Add($object)
                         } else {
                             $OtherComponentModelHash = [ordered]@{ }
-                            $OtherComponentModelProperties = $OtherComponentModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $OtherComponentModelProperties = $OtherComponentModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($OtherComponentModelProp in $OtherComponentModelProperties) {
 
                                 $OtherComponentModelPropNewValue = Get-GlpiToolsParameters -Parameter $OtherComponentModelProp.Name -Value $OtherComponentModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsOtherComponentModels {
                     } Catch {
 
                         Write-Verbose -Message "Other Component Model ID = $OCMId is not found"
-                        
+
                     }
                     $OtherComponentModelsArray
                     $OtherComponentModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            OtherComponentModelName { 
+            OtherComponentModelName {
                 Search-GlpiToolsItems -SearchFor DevicePciModel -SearchType contains -SearchValue $OtherComponentModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DevicePciModel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

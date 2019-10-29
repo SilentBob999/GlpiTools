@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceDriveModels -DeviceDriveModelId 326
     Function gets DeviceDriveModelId from GLPI which is provided through -DeviceDriveModelId after Function type, and return Device Drive Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceDriveModels -DeviceDriveModelId 326, 321
     Function gets Device Drive Models Id from GLPI which is provided through -DeviceDriveModelId keyword after Function type (u can provide many ID's like that), and return Device Drive Models object
 .EXAMPLE
@@ -53,18 +53,27 @@ function Get-GlpiToolsDropdownsDeviceDriveModels {
             ParameterSetName = "DeviceDriveModelId")]
         [alias('DDMID')]
         [string[]]$DeviceDriveModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DeviceDriveModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DeviceDriveModelName")]
         [alias('DDMN')]
-        [string]$DeviceDriveModelName
+        [string]$DeviceDriveModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
+
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +85,10 @@ function Get-GlpiToolsDropdownsDeviceDriveModels {
 
         $DeviceDriveModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +98,13 @@ function Get-GlpiToolsDropdownsDeviceDriveModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/devicedrivemodel/?range=0-9999999999999"
                 }
-                
+
                 $DeviceDriveModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DeviceDriveModel in $DeviceDriveModelsAll) {
                     $DeviceDriveModelHash = [ordered]@{ }
-                    $DeviceDriveModelProperties = $DeviceDriveModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DeviceDriveModelProperties = $DeviceDriveModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DeviceDriveModelProp in $DeviceDriveModelProperties) {
                         $DeviceDriveModelHash.Add($DeviceDriveModelProp.Name, $DeviceDriveModelProp.Value)
                     }
@@ -105,7 +114,7 @@ function Get-GlpiToolsDropdownsDeviceDriveModels {
                 $DeviceDriveModelsArray
                 $DeviceDriveModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DeviceDriveModelId { 
+            DeviceDriveModelId {
                 foreach ( $DDMId in $DeviceDriveModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +131,8 @@ function Get-GlpiToolsDropdownsDeviceDriveModels {
 
                         if ($Raw) {
                             $DeviceDriveModelHash = [ordered]@{ }
-                            $DeviceDriveModelProperties = $DeviceDriveModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceDriveModelProperties = $DeviceDriveModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceDriveModelProp in $DeviceDriveModelProperties) {
                                 $DeviceDriveModelHash.Add($DeviceDriveModelProp.Name, $DeviceDriveModelProp.Value)
                             }
@@ -131,8 +140,8 @@ function Get-GlpiToolsDropdownsDeviceDriveModels {
                             $DeviceDriveModelsArray.Add($object)
                         } else {
                             $DeviceDriveModelHash = [ordered]@{ }
-                            $DeviceDriveModelProperties = $DeviceDriveModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceDriveModelProperties = $DeviceDriveModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceDriveModelProp in $DeviceDriveModelProperties) {
 
                                 $DeviceDriveModelPropNewValue = Get-GlpiToolsParameters -Parameter $DeviceDriveModelProp.Name -Value $DeviceDriveModelProp.Value
@@ -145,19 +154,22 @@ function Get-GlpiToolsDropdownsDeviceDriveModels {
                     } Catch {
 
                         Write-Verbose -Message "Device Drive Model ID = $DDMId is not found"
-                        
+
                     }
                     $DeviceDriveModelsArray
                     $DeviceDriveModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DeviceDriveModelName { 
+            DeviceDriveModelName {
                 Search-GlpiToolsItems -SearchFor DeviceDriveModel -SearchType contains -SearchValue $DeviceDriveModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceDriveModel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

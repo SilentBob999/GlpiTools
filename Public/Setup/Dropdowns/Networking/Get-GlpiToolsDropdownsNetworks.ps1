@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsNetworks -NetworkId 326
     Function gets NetworkId from GLPI which is provided through -NetworkId after Function type, and return Network object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsNetworks -NetworkId 326, 321
     Function gets NetworkId from GLPI which is provided through -NetworkId keyword after Function type (u can provide many ID's like that), and return Network object
 .EXAMPLE
@@ -54,17 +54,24 @@ function Get-GlpiToolsDropdownsNetworks {
         [alias('NID')]
         [string[]]$NetworkId,
         [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
+        [parameter(Mandatory = $false,
             ParameterSetName = "NetworkId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "NetworkName")]
         [alias('NN')]
-        [string]$NetworkName
+        [string]$NetworkName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +83,10 @@ function Get-GlpiToolsDropdownsNetworks {
 
         $NetworkArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +96,13 @@ function Get-GlpiToolsDropdownsNetworks {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Network/?range=0-9999999999999"
                 }
-                
+
                 $GlpiNetworkAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($NetworkModel in $GlpiNetworkAll) {
                     $NetworkHash = [ordered]@{ }
-                    $NetworkProperties = $NetworkModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $NetworkProperties = $NetworkModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($NetworkProp in $NetworkProperties) {
                         $NetworkHash.Add($NetworkProp.Name, $NetworkProp.Value)
                     }
@@ -105,7 +112,7 @@ function Get-GlpiToolsDropdownsNetworks {
                 $NetworkArray
                 $NetworkArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            NetworkId { 
+            NetworkId {
                 foreach ( $NId in $NetworkId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +129,8 @@ function Get-GlpiToolsDropdownsNetworks {
 
                         if ($Raw) {
                             $NetworkHash = [ordered]@{ }
-                            $NetworkProperties = $NetworkModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $NetworkProperties = $NetworkModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($NetworkProp in $NetworkProperties) {
                                 $NetworkHash.Add($NetworkProp.Name, $NetworkProp.Value)
                             }
@@ -131,8 +138,8 @@ function Get-GlpiToolsDropdownsNetworks {
                             $NetworkArray.Add($object)
                         } else {
                             $NetworkHash = [ordered]@{ }
-                            $NetworkProperties = $NetworkModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $NetworkProperties = $NetworkModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($NetworkProp in $NetworkProperties) {
 
                                 switch ($NetworkProp.Name) {
@@ -147,19 +154,22 @@ function Get-GlpiToolsDropdownsNetworks {
                     } Catch {
 
                         Write-Verbose -Message "Network ID = $NId is not found"
-                        
+
                     }
                     $NetworkArray
                     $NetworkArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            NetworkName { 
-                Search-GlpiToolsItems -SearchFor Network -SearchType contains -SearchValue $NetworkName 
-            } 
+            NetworkName {
+                Search-GlpiToolsItems -SearchFor Network -SearchType contains -SearchValue $NetworkName
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "Network" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsProjectStates -ProjectStateId 326
     Function gets ProjectStateId from GLPI which is provided through -ProjectStateId after Function type, and return Project States object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsProjectStates -ProjectStateId 326, 321
     Function gets Project States Id from GLPI which is provided through -ProjectStateId keyword after Function type (u can provide many ID's like that), and return Project States object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsProjectStates {
             ParameterSetName = "ProjectStateId")]
         [alias('PSID')]
         [string[]]$ProjectStateId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ProjectStateId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "ProjectStateName")]
         [alias('PSN')]
-        [string]$ProjectStateName
+        [string]$ProjectStateName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsProjectStates {
 
         $ProjectStatesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsProjectStates {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/projectstate/?range=0-9999999999999"
                 }
-                
+
                 $ProjectStatesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($ProjectState in $ProjectStatesAll) {
                     $ProjectStateHash = [ordered]@{ }
-                    $ProjectStateProperties = $ProjectState.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $ProjectStateProperties = $ProjectState.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($ProjectStateProp in $ProjectStateProperties) {
                         $ProjectStateHash.Add($ProjectStateProp.Name, $ProjectStateProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsProjectStates {
                 $ProjectStatesArray
                 $ProjectStatesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ProjectStateId { 
+            ProjectStateId {
                 foreach ( $PSId in $ProjectStateId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsProjectStates {
 
                         if ($Raw) {
                             $ProjectStateHash = [ordered]@{ }
-                            $ProjectStateProperties = $ProjectState.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ProjectStateProperties = $ProjectState.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ProjectStateProp in $ProjectStateProperties) {
                                 $ProjectStateHash.Add($ProjectStateProp.Name, $ProjectStateProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsProjectStates {
                             $ProjectStatesArray.Add($object)
                         } else {
                             $ProjectStateHash = [ordered]@{ }
-                            $ProjectStateProperties = $ProjectState.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $ProjectStateProperties = $ProjectState.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($ProjectStateProp in $ProjectStateProperties) {
 
                                 $ProjectStatePropNewValue = Get-GlpiToolsParameters -Parameter $ProjectStateProp.Name -Value $ProjectStateProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsProjectStates {
                     } Catch {
 
                         Write-Verbose -Message "Project State ID = $PSId is not found"
-                        
+
                     }
                     $ProjectStatesArray
                     $ProjectStatesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ProjectStateName { 
+            ProjectStateName {
                 Search-GlpiToolsItems -SearchFor projectstate -SearchType contains -SearchValue $ProjectStateName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "projectstate" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

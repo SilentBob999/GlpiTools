@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsPrinterTypes -PrinterTypeId 326
     Function gets PrinterTypeId from GLPI which is provided through -PrinterTypeId after Function type, and return Printer Types object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsPrinterTypes -PrinterTypeId 326, 321
     Function gets Printer Types Id from GLPI which is provided through -PrinterTypeId keyword after Function type (u can provide many ID's like that), and return Printer Types object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsPrinterTypes {
             ParameterSetName = "PrinterTypeId")]
         [alias('PTID')]
         [string[]]$PrinterTypeId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "PrinterTypeId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "PrinterTypeName")]
         [alias('PTN')]
-        [string]$PrinterTypeName
+        [string]$PrinterTypeName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsPrinterTypes {
 
         $PrinterTypesArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsPrinterTypes {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/printertype/?range=0-9999999999999"
                 }
-                
+
                 $PrinterTypesAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($PrinterType in $PrinterTypesAll) {
                     $PrinterTypeHash = [ordered]@{ }
-                    $PrinterTypeProperties = $PrinterType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $PrinterTypeProperties = $PrinterType.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($PrinterTypeProp in $PrinterTypeProperties) {
                         $PrinterTypeHash.Add($PrinterTypeProp.Name, $PrinterTypeProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsPrinterTypes {
                 $PrinterTypesArray
                 $PrinterTypesArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            PrinterTypeId { 
+            PrinterTypeId {
                 foreach ( $PTId in $PrinterTypeId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsPrinterTypes {
 
                         if ($Raw) {
                             $PrinterTypeHash = [ordered]@{ }
-                            $PrinterTypeProperties = $PrinterType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PrinterTypeProperties = $PrinterType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PrinterTypeProp in $PrinterTypeProperties) {
                                 $PrinterTypeHash.Add($PrinterTypeProp.Name, $PrinterTypeProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsPrinterTypes {
                             $PrinterTypesArray.Add($object)
                         } else {
                             $PrinterTypeHash = [ordered]@{ }
-                            $PrinterTypeProperties = $PrinterType.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $PrinterTypeProperties = $PrinterType.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($PrinterTypeProp in $PrinterTypeProperties) {
 
                                 $PrinterTypePropNewValue = Get-GlpiToolsParameters -Parameter $PrinterTypeProp.Name -Value $PrinterTypeProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsPrinterTypes {
                     } Catch {
 
                         Write-Verbose -Message "Printer Type ID = $PTId is not found"
-                        
+
                     }
                     $PrinterTypesArray
                     $PrinterTypesArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            PrinterTypeName { 
+            PrinterTypeName {
                 Search-GlpiToolsItems -SearchFor printertype -SearchType contains -SearchValue $PrinterTypeName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "printertype" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

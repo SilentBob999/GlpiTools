@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceControlModels -DeviceControlModelId 326
     Function gets DeviceControlModelId from GLPI which is provided through -DeviceControlModelId after Function type, and return Device Control Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsDeviceControlModels -DeviceControlModelId 326, 321
     Function gets Device Control Models Id from GLPI which is provided through -DeviceControlModelId keyword after Function type (u can provide many ID's like that), and return Device Control Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsDeviceControlModels {
             ParameterSetName = "DeviceControlModelId")]
         [alias('DCMID')]
         [string[]]$DeviceControlModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "DeviceControlModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "DeviceControlModelName")]
         [alias('DCMN')]
-        [string]$DeviceControlModelName
+        [string]$DeviceControlModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsDeviceControlModels {
 
         $DeviceControlModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsDeviceControlModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/devicecontrolmodel/?range=0-9999999999999"
                 }
-                
+
                 $DeviceControlModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($DeviceControlModel in $DeviceControlModelsAll) {
                     $DeviceControlModelHash = [ordered]@{ }
-                    $DeviceControlModelProperties = $DeviceControlModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $DeviceControlModelProperties = $DeviceControlModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($DeviceControlModelProp in $DeviceControlModelProperties) {
                         $DeviceControlModelHash.Add($DeviceControlModelProp.Name, $DeviceControlModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsDeviceControlModels {
                 $DeviceControlModelsArray
                 $DeviceControlModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            DeviceControlModelId { 
+            DeviceControlModelId {
                 foreach ( $DCMId in $DeviceControlModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsDeviceControlModels {
 
                         if ($Raw) {
                             $DeviceControlModelHash = [ordered]@{ }
-                            $DeviceControlModelProperties = $DeviceControlModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceControlModelProperties = $DeviceControlModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceControlModelProp in $DeviceControlModelProperties) {
                                 $DeviceControlModelHash.Add($DeviceControlModelProp.Name, $DeviceControlModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsDeviceControlModels {
                             $DeviceControlModelsArray.Add($object)
                         } else {
                             $DeviceControlModelHash = [ordered]@{ }
-                            $DeviceControlModelProperties = $DeviceControlModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $DeviceControlModelProperties = $DeviceControlModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($DeviceControlModelProp in $DeviceControlModelProperties) {
 
                                 $DeviceControlModelPropNewValue = Get-GlpiToolsParameters -Parameter $DeviceControlModelProp.Name -Value $DeviceControlModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsDeviceControlModels {
                     } Catch {
 
                         Write-Verbose -Message "Device Control Model ID = $DCMId is not found"
-                        
+
                     }
                     $DeviceControlModelsArray
                     $DeviceControlModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            DeviceControlModelName { 
+            DeviceControlModelName {
                 Search-GlpiToolsItems -SearchFor DeviceControlModel -SearchType contains -SearchValue $DeviceControlModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "DeviceControlModel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }

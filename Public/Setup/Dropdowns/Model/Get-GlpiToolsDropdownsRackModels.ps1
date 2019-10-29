@@ -27,7 +27,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsRackModels -RackModelId 326
     Function gets RackModelId from GLPI which is provided through -RackModelId after Function type, and return Rack Models object
-.EXAMPLE 
+.EXAMPLE
     PS C:\> Get-GlpiToolsDropdownsRackModels -RackModelId 326, 321
     Function gets Rack Models Id from GLPI which is provided through -RackModelId keyword after Function type (u can provide many ID's like that), and return Rack Models object
 .EXAMPLE
@@ -53,18 +53,26 @@ function Get-GlpiToolsDropdownsRackModels {
             ParameterSetName = "RackModelId")]
         [alias('RMID')]
         [string[]]$RackModelId,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "RackModelId")]
         [switch]$Raw,
-        
+
         [parameter(Mandatory = $true,
             ParameterSetName = "RackModelName")]
         [alias('RMN')]
-        [string]$RackModelName
+        [string]$RackModelName,
+
+        [parameter(Mandatory = $true,
+            ParameterSetName = "SearchText")]
+        [alias('Search')]
+        [hashtable]$SearchText
     )
-    
+
     begin {
-        $SessionToken = $Script:SessionToken    
+        $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
 
@@ -76,10 +84,10 @@ function Get-GlpiToolsDropdownsRackModels {
 
         $RackModelsArray = [System.Collections.Generic.List[PSObject]]::New()
     }
-    
+
     process {
         switch ($ChoosenParam) {
-            All { 
+            All {
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -89,13 +97,13 @@ function Get-GlpiToolsDropdownsRackModels {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/rackmodel/?range=0-9999999999999"
                 }
-                
+
                 $RackModelsAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($RackModel in $RackModelsAll) {
                     $RackModelHash = [ordered]@{ }
-                    $RackModelProperties = $RackModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                    $RackModelProperties = $RackModel.PSObject.Properties | Select-Object -Property Name, Value
+
                     foreach ($RackModelProp in $RackModelProperties) {
                         $RackModelHash.Add($RackModelProp.Name, $RackModelProp.Value)
                     }
@@ -105,7 +113,7 @@ function Get-GlpiToolsDropdownsRackModels {
                 $RackModelsArray
                 $RackModelsArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            RackModelId { 
+            RackModelId {
                 foreach ( $RMId in $RackModelId ) {
                     $params = @{
                         headers = @{
@@ -122,8 +130,8 @@ function Get-GlpiToolsDropdownsRackModels {
 
                         if ($Raw) {
                             $RackModelHash = [ordered]@{ }
-                            $RackModelProperties = $RackModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $RackModelProperties = $RackModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($RackModelProp in $RackModelProperties) {
                                 $RackModelHash.Add($RackModelProp.Name, $RackModelProp.Value)
                             }
@@ -131,8 +139,8 @@ function Get-GlpiToolsDropdownsRackModels {
                             $RackModelsArray.Add($object)
                         } else {
                             $RackModelHash = [ordered]@{ }
-                            $RackModelProperties = $RackModel.PSObject.Properties | Select-Object -Property Name, Value 
-                                
+                            $RackModelProperties = $RackModel.PSObject.Properties | Select-Object -Property Name, Value
+
                             foreach ($RackModelProp in $RackModelProperties) {
 
                                 $RackModelPropNewValue = Get-GlpiToolsParameters -Parameter $RackModelProp.Name -Value $RackModelProp.Value
@@ -145,19 +153,22 @@ function Get-GlpiToolsDropdownsRackModels {
                     } Catch {
 
                         Write-Verbose -Message "Rack Model ID = $RMId is not found"
-                        
+
                     }
                     $RackModelsArray
                     $RackModelsArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            RackModelName { 
+            RackModelName {
                 Search-GlpiToolsItems -SearchFor rackmodel -SearchType contains -SearchValue $RackModelName
-            } 
+            }
+            SearchText {
+                Get-GlpiToolsItems -ItemType "rackmodel" -SearchText $SearchText -raw $Raw
+            }
             Default { }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }
