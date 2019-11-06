@@ -30,20 +30,13 @@ function Get-GlpiToolsParameters {
     )
 
     begin {
-        $AppToken = $Script:AppToken
-        $PathToGlpi = $Script:PathToGlpi
-        $SessionToken = $Script:SessionToken
 
-        $AppToken = Get-GlpiToolsConfig -Verbose:$false | Select-Object -ExpandProperty AppToken
-        $PathToGlpi = Get-GlpiToolsConfig -Verbose:$false | Select-Object -ExpandProperty PathToGlpi
-        $SessionToken = Set-GlpiToolsInitSession -Verbose:$false | Select-Object -ExpandProperty SessionToken
     }
-
-    process {
-
+    
+    process { 
         try {
-            if  ($Parameter -eq "entities_id") {
-                $ConvertedValue = $Value | Get-GlpiToolsEntities | Select-Object -ExpandProperty CompleteName -ErrorAction Stop
+            if ($Parameter -eq "entities_id") {
+                $ConvertedValue = $Value | Get-GlpiToolsEntities -Raw | Select-Object -ExpandProperty CompleteName -ErrorAction Stop
             } elseif ($Parameter -eq "users_id_tech" ) {
                 $ConvertedValue = $Value | Get-GlpiToolsUsers -Raw | Select-Object realname, firstname | ForEach-Object { "{0} {1}" -f $_.firstname,$_.realname } -ErrorAction Stop
             } elseif ($Parameter -eq "groups_id_tech" ) {
@@ -69,24 +62,20 @@ function Get-GlpiToolsParameters {
             } elseif ($Parameter -eq "states_id" ) {
                 $ConvertedValue = $Value | Get-GlpiToolsDropdownsStatusesOfItems -Raw | Select-Object -ExpandProperty name -ErrorAction Stop
             } elseif ($Parameter -eq "softwares_id") {
-                $ConvertedValue = $Value | Get-GlpiToolsSoftware -Raw | Select-Object -ExpandProperty name -ErrorAction Stop
+                $ConvertedValue = $Value | Get-GlpiToolsSoftware -Raw | Select-Object -ExpandProperty name -ErrorAction Stop 
             } elseif ($Parameter -eq "softwareversions_id") {
-                $ConvertedValue = $Value | Get-GlpiToolsSoftwareVersions -Raw | Select-Object -ExpandProperty name -ErrorAction Stop
+                $ConvertedValue = $Value | Get-GlpiToolsSoftwareVersions -Raw | Select-Object -ExpandProperty name -ErrorAction Stop 
             } elseif ($Parameter -eq "computers_id") {
-                $ConvertedValue = $Value | Get-GlpiToolsComputers -Raw | Select-Object -ExpandProperty name -ErrorAction Stop
-            }
-            else {
+                $ConvertedValue = $Value | Get-GlpiToolsComputers -Raw | Select-Object -ExpandProperty name -ErrorAction Stop 
+            } else {
                 $ConvertedValue = $Value
             }
         } catch {
-            $ConvertedValue = 0
+            $ConvertedValue = "Blank"
         }
-
-
     }
 
     end {
         $ConvertedValue
-        Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }
 }
