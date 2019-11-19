@@ -104,17 +104,30 @@ function Get-GlpiToolsItems{
             $SearchTextString += "&searchText[$($key)]=$($SearchText[$key])"
         }
 
-        $params = @{
-            headers = @{
-                'Content-Type'  = 'application/json'
-                'App-Token'     = $AppToken
-                'Session-Token' = $SessionToken
-            }
-            method  = 'get'
-            uri     = "$($PathToGlpi)/$($ItemType)/?range=0-9999999999999$($SearchTextString)$($IsDeletedString)$($OnlyIdString)$($ExtraParameter)"
-        }
+        $GlpiObjectAll = @()
+        $x = 0
+        do {
+            try {
+                $while = $true
+                $params = @{
+                    headers = @{
+                        'Content-Type'  = 'application/json'
+                        'App-Token'     = $AppToken
+                        'Session-Token' = $SessionToken
+                    }
+                    method  = 'get'
+                    uri     = "$($PathToGlpi)/$($ItemType)/?range=$x-$($x+999)$($SearchTextString)$($IsDeletedString)$($OnlyIdString)$($ExtraParameter)"
+                }
 
-        $GlpiObjectAll = Invoke-RestMethod @params -Verbose:$false
+                #Invoke-RestMethod @params -Verbose:$false | ForEach-Object {$GlpiObjectAll.Add($_)}
+                $GlpiObjectAll += Invoke-RestMethod @params -Verbose:$false
+                $x = $x + 1000
+            }
+            catch {
+                $while = $false
+            }
+        } while ($while)
+
         if (-not $Raw -and (@($GlpiObjectAll).count -gt 1)) {Write-Warning "RAW forced because more than 1 result"}
 
         foreach ($GlpiObject in $GlpiObjectAll) {
