@@ -18,7 +18,7 @@
     Parameter which you can use with MonitorName Parameter.
     If you want Search for Monitor name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with MonitorId Parameter.
+    Parameter which you can use with MonitorId Parameter. 
     If you want to get additional parameter of Monitor object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsMonitors
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsMonitors -MonitorId 326
     Function gets MonitorID from GLPI which is provided through -MonitorId after Function type, and return Monitor object
-.EXAMPLE
+.EXAMPLE 
     PS C:\> Get-GlpiToolsMonitors -MonitorId 326, 321
     Function gets MonitorID from GLPI which is provided through -MonitorId keyword after Function type (u can provide many ID's like that), and return Monitor object
 .EXAMPLE
@@ -65,9 +65,6 @@ function Get-GlpiToolsMonitors {
             ParameterSetName = "MonitorId")]
         [alias('MID')]
         [string[]]$MonitorId,
-
-        [parameter(Mandatory = $false,
-            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "MonitorId")]
         [switch]$Raw,
@@ -97,14 +94,9 @@ function Get-GlpiToolsMonitors {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter,
-
-        [parameter(Mandatory = $true,
-            ParameterSetName = "SearchText")]
-        [alias('Search')]
-        [hashtable]$SearchText
+        [string]$Parameter
     )
-
+    
     begin {
 
         $AppToken = $Script:AppToken
@@ -127,19 +119,19 @@ function Get-GlpiToolsMonitors {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithTickets { $ParamValue = "?with_tickets=true" }
+            WithTickets { $ParamValue = "?with_tickets=true" } 
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" }
+            WithNotes { $ParamValue = "?with_notes=true" } 
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-
+    
     process {
         switch ($ChoosenParam) {
-            All {
+            All { 
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -149,13 +141,13 @@ function Get-GlpiToolsMonitors {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Monitor/?range=0-9999999999999"
                 }
-
+                
                 $GlpiMonitorAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiMonitor in $GlpiMonitorAll) {
                     $MonitorHash = [ordered]@{ }
-                            $MonitorProperties = $GlpiMonitor.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $MonitorProperties = $GlpiMonitor.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($MonitorProp in $MonitorProperties) {
                                 $MonitorHash.Add($MonitorProp.Name, $MonitorProp.Value)
                             }
@@ -165,7 +157,7 @@ function Get-GlpiToolsMonitors {
                 $MonitorObjectArray
                 $MonitorObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            MonitorId {
+            MonitorId { 
                 foreach ( $MId in $MonitorId ) {
                     $params = @{
                         headers = @{
@@ -182,8 +174,8 @@ function Get-GlpiToolsMonitors {
 
                         if ($Raw) {
                             $MonitorHash = [ordered]@{ }
-                            $MonitorProperties = $GlpiMonitor.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $MonitorProperties = $GlpiMonitor.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($MonitorProp in $MonitorProperties) {
                                 $MonitorHash.Add($MonitorProp.Name, $MonitorProp.Value)
                             }
@@ -191,19 +183,14 @@ function Get-GlpiToolsMonitors {
                             $MonitorObjectArray.Add($object)
                         } else {
                             $MonitorHash = [ordered]@{ }
-                            $MonitorProperties = $GlpiMonitor.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $MonitorProperties = $GlpiMonitor.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($MonitorProp in $MonitorProperties) {
 
-                                switch ($MonitorProp.Name) {
-                                    entities_id { $MonitorPropNewValue = $MonitorProp.Value | Get-GlpiToolsEntities | Select-Object -ExpandProperty CompleteName }
-                                    users_id { $MonitorPropNewValue = $MonitorProp.Value | Get-GlpiToolsUsers | Select-Object realname, firstname | ForEach-Object { "{0} {1}" -f $_.firstname,$_.realname } }
-                                    Default {
-                                        $MonitorPropNewValue = $MonitorProp.Value
-                                    }
-                                }
+                                $MonitorPropNewValue = Get-GlpiToolsParameters -Parameter $MonitorProp.Name -Value $MonitorProp.Value
 
                                 $MonitorHash.Add($MonitorProp.Name, $MonitorPropNewValue)
+
                             }
                             $object = [pscustomobject]$MonitorHash
                             $MonitorObjectArray.Add($object)
@@ -211,24 +198,21 @@ function Get-GlpiToolsMonitors {
                     } Catch {
 
                         Write-Verbose -Message "Monitor ID = $MId is not found"
-
+                        
                     }
                     $MonitorObjectArray
                     $MonitorObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            MonitorName {
+            MonitorName { 
                 Search-GlpiToolsItems -SearchFor Monitor -SearchType contains -SearchValue $MonitorName -SearchInTrash $SearchInTrash
             }
-            SearchText {
-                Get-GlpiToolsItems -ItemType "Monitor" -SearchText $SearchText -raw $Raw
-            }
             Default {
-
+                
             }
         }
     }
-
+    
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

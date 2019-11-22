@@ -18,7 +18,7 @@
     Parameter which you can use with PrinterName Parameter.
     If you want Search for Printer name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with PrinterId Parameter.
+    Parameter which you can use with PrinterId Parameter. 
     If you want to get additional parameter of Printer object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsPrinters
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsPrinters -PrinterId 326
     Function gets PrinterID from GLPI which is provided through -PrinterId after Function type, and return Printer object
-.EXAMPLE
+.EXAMPLE 
     PS C:\> Get-GlpiToolsPrinters -PrinterId 326, 321
     Function gets PrinterID from GLPI which is provided through -PrinterId keyword after Function type (u can provide many ID's like that), and return Printer object
 .EXAMPLE
@@ -65,9 +65,6 @@ function Get-GlpiToolsPrinters {
             ParameterSetName = "PrinterId")]
         [alias('PID')]
         [string[]]$PrinterId,
-
-        [parameter(Mandatory = $false,
-            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "PrinterId")]
         [switch]$Raw,
@@ -101,14 +98,9 @@ function Get-GlpiToolsPrinters {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter,
-
-        [parameter(Mandatory = $true,
-            ParameterSetName = "SearchText")]
-        [alias('Search')]
-        [hashtable]$SearchText
+        [string]$Parameter
     )
-
+    
     begin {
 
         $AppToken = $Script:AppToken
@@ -135,19 +127,19 @@ function Get-GlpiToolsPrinters {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithTickets { $ParamValue = "?with_tickets=true" }
+            WithTickets { $ParamValue = "?with_tickets=true" } 
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" }
+            WithNotes { $ParamValue = "?with_notes=true" } 
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-
+    
     process {
         switch ($ChoosenParam) {
-            All {
+            All { 
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -157,13 +149,13 @@ function Get-GlpiToolsPrinters {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Printer/?range=0-9999999999999"
                 }
-
+                
                 $GlpiPrinterAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiPrinter in $GlpiPrinterAll) {
                     $PrinterHash = [ordered]@{ }
-                            $PrinterProperties = $GlpiPrinter.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $PrinterProperties = $GlpiPrinter.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($PrinterProp in $PrinterProperties) {
                                 $PrinterHash.Add($PrinterProp.Name, $PrinterProp.Value)
                             }
@@ -173,7 +165,7 @@ function Get-GlpiToolsPrinters {
                 $PrinterObjectArray
                 $PrinterObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            PrinterId {
+            PrinterId { 
                 foreach ( $PId in $PrinterId ) {
                     $params = @{
                         headers = @{
@@ -190,8 +182,8 @@ function Get-GlpiToolsPrinters {
 
                         if ($Raw) {
                             $PrinterHash = [ordered]@{ }
-                            $PrinterProperties = $GlpiPrinter.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $PrinterProperties = $GlpiPrinter.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($PrinterProp in $PrinterProperties) {
                                 $PrinterHash.Add($PrinterProp.Name, $PrinterProp.Value)
                             }
@@ -199,18 +191,11 @@ function Get-GlpiToolsPrinters {
                             $PrinterObjectArray.Add($object)
                         } else {
                             $PrinterHash = [ordered]@{ }
-                            $PrinterProperties = $GlpiPrinter.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $PrinterProperties = $GlpiPrinter.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($PrinterProp in $PrinterProperties) {
 
-                                switch ($PrinterProp.Name) {
-                                    entities_id { $PrinterPropNewValue = $PrinterProp.Value | Get-GlpiToolsEntities | Select-Object -ExpandProperty CompleteName }
-                                    users_id { $PrinterPropNewValue = $PrinterProp.Value | Get-GlpiToolsUsers | Select-Object realname, firstname | ForEach-Object { "{0} {1}" -f $_.firstname,$_.realname } }
-                                    Default {
-                                        $PrinterPropNewValue = $PrinterProp.Value
-                                    }
-                                }
-
+                                $PrinterPropNewValue = Get-GlpiToolsParameters -Parameter $PrinterProp.Name -Value $PrinterProp.Value
                                 $PrinterHash.Add($PrinterProp.Name, $PrinterPropNewValue)
                             }
                             $object = [pscustomobject]$PrinterHash
@@ -219,24 +204,21 @@ function Get-GlpiToolsPrinters {
                     } Catch {
 
                         Write-Verbose -Message "Printer ID = $PId is not found"
-
+                        
                     }
                     $PrinterObjectArray
                     $PrinterObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            PrinterName {
+            PrinterName { 
                 Search-GlpiToolsItems -SearchFor Printer -SearchType contains -SearchValue $PrinterName -SearchInTrash $SearchInTrash
             }
-            SearchText {
-                Get-GlpiToolsItems -ItemType "Printer" -SearchText $SearchText -raw $Raw
-            }
             Default {
-
+                
             }
         }
     }
-
+    
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

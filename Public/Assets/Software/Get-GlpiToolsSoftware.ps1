@@ -13,7 +13,7 @@
     Parameter which you can use with SoftwareId Parameter.
     SoftwareId has converted parameters from default, parameter Raw allows not convert this parameters.
 .PARAMETER Parameter
-    Parameter which you can use with SoftwareId Parameter.
+    Parameter which you can use with SoftwareId Parameter. 
     If you want to get additional parameter of Software object like, disks, or logs, use this parameter.
 .PARAMETER SoftwareName
     This parameter can take pipline input, either, you can use this function with -SoftwareName keyword.
@@ -30,7 +30,7 @@
 .EXAMPLE
     PS C:\Users\Wojtek> Get-GlpiToolsSoftware -SoftwareId 326
     Function gets SoftwareId from GLPI which is provided through -SoftwareId after Function type, and return Software object
-.EXAMPLE
+.EXAMPLE 
     PS C:\Users\Wojtek> Get-GlpiToolsSoftware -SoftwareId 326, 321
     Function gets SoftwareId from GLPI which is provided through -SoftwareId keyword after Function type (u can provide many ID's like that), and return Software object
 .INPUTS
@@ -53,9 +53,6 @@ function Get-GlpiToolsSoftware {
             ParameterSetName = "SoftwareId")]
         [alias('SID')]
         [string[]]$SoftwareId,
-
-        [parameter(Mandatory = $false,
-            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "SoftwareId")]
         [switch]$Raw,
@@ -83,15 +80,10 @@ function Get-GlpiToolsSoftware {
             ParameterSetName = "SoftwareName")]
         [alias('SIT')]
         [ValidateSet("Yes", "No")]
-        [string]$SearchInTrash = "No",
-
-        [parameter(Mandatory = $true,
-            ParameterSetName = "SearchText")]
-        [alias('Search')]
-        [hashtable]$SearchText
+        [string]$SearchInTrash = "No"
 
     )
-
+    
     begin {
         $AppToken = $Script:AppToken
         $PathToGlpi = $Script:PathToGlpi
@@ -112,18 +104,18 @@ function Get-GlpiToolsSoftware {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithTickets { $ParamValue = "?with_tickets=true" }
+            WithTickets { $ParamValue = "?with_tickets=true" } 
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" }
+            WithNotes { $ParamValue = "?with_notes=true" } 
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
     }
-
+    
     process {
         switch ($ChoosenParam) {
-            All {
+            All { 
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -133,13 +125,13 @@ function Get-GlpiToolsSoftware {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Software/?range=0-99999999999"
                 }
-
+                
                 $GlpiSoftwareAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiSoftware in $GlpiSoftwareAll) {
                     $SoftwareHash = [ordered]@{ }
-                    $SoftwareProperties = $GlpiSoftware.PSObject.Properties | Select-Object -Property Name, Value
-
+                    $SoftwareProperties = $GlpiSoftware.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                     foreach ($SoftwareProp in $SoftwareProperties) {
                         $SoftwareHash.Add($SoftwareProp.Name, $SoftwareProp.Value)
                     }
@@ -166,8 +158,8 @@ function Get-GlpiToolsSoftware {
 
                         if ($Raw) {
                             $SoftwareHash = [ordered]@{ }
-                            $SoftwareProperties = $GlpiSoftware.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $SoftwareProperties = $GlpiSoftware.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($SoftwareProp in $SoftwareProperties) {
                                 $SoftwareHash.Add($SoftwareProp.Name, $SoftwareProp.Value)
                             }
@@ -175,24 +167,10 @@ function Get-GlpiToolsSoftware {
                             $SoftwareObjectArray.Add($object)
                         } else {
                             $SoftwareHash = [ordered]@{ }
-                            $SoftwareProperties = $GlpiSoftware.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $SoftwareProperties = $GlpiSoftware.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($SoftwareProp in $SoftwareProperties) {
-
-                                switch ($SoftwareProp.Name) {
-                                    entities_id { $SoftwarePropNewValue = $SoftwareProp.Value | Get-GlpiToolsEntities | Select-Object -ExpandProperty CompleteName }
-                                    users_id { $SoftwarePropNewValue = $SoftwareProp.Value | Get-GlpiToolsUsers | Select-Object realname, firstname | ForEach-Object { "{0} {1}" -f $_.firstname,$_.realname } }
-                                    softwarecategories_id {
-                                        if ($SoftwareProp.Value -eq 0) {
-                                            $SoftwarePropNewValue = ''
-                                        } else {
-                                            $SoftwarePropNewValue = $SoftwareProp.Value | Get-GlpiToolsDropdownsSoftwareCategory | Select-Object -ExpandProperty name
-                                        }
-                                    }
-                                    Default {
-                                        $SoftwarePropNewValue = $SoftwareProp.Value
-                                    }
-                                }
+                                $SoftwarePropNewValue = Get-GlpiToolsParameters -Parameter $SoftwareProp.Name -Value $SoftwareProp.Value
 
                                 $SoftwareHash.Add($SoftwareProp.Name, $SoftwarePropNewValue)
                             }
@@ -202,7 +180,7 @@ function Get-GlpiToolsSoftware {
                     } Catch {
 
                         Write-Verbose -Message "Software ID = $SId is not found"
-
+                        
                     }
                     $SoftwareObjectArray
                     $SoftwareObjectArray = [System.Collections.Generic.List[PSObject]]::New()
@@ -211,13 +189,10 @@ function Get-GlpiToolsSoftware {
             SoftwareName {
                 Search-GlpiToolsItems -SearchFor Software -SearchType contains -SearchValue $SoftwareName -SearchInTrash $SearchInTrash
             }
-            SearchText {
-                Get-GlpiToolsItems -ItemType "Software" -SearchText $SearchText -raw $Raw
-            }
             Default { }
         }
     }
-
+    
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

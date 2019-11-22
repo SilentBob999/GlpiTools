@@ -18,7 +18,7 @@
     Parameter which you can use with CartridgeItemName Parameter.
     If you want Search for CartridgeItem name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with CartridgeItemId Parameter.
+    Parameter which you can use with CartridgeItemId Parameter. 
     If you want to get additional parameter of CartridgeItem object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsCartridgeItems
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsCartridgeItems -CartridgeItemId 326
     Function gets CartridgeItemID from GLPI which is provided through -CartridgeItemId after Function type, and return CartridgeItem object
-.EXAMPLE
+.EXAMPLE 
     PS C:\> Get-GlpiToolsCartridgeItems -CartridgeItemId 326, 321
     Function gets CartridgeItemID from GLPI which is provided through -CartridgeItemId keyword after Function type (u can provide many ID's like that), and return CartridgeItem object
 .EXAMPLE
@@ -65,9 +65,6 @@ function Get-GlpiToolsCartridgeItems {
             ParameterSetName = "CartridgeItemId")]
         [alias('CIID')]
         [string[]]$CartridgeItemId,
-
-        [parameter(Mandatory = $false,
-            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "CartridgeItemId")]
         [switch]$Raw,
@@ -101,14 +98,9 @@ function Get-GlpiToolsCartridgeItems {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter,
-
-        [parameter(Mandatory = $true,
-            ParameterSetName = "SearchText")]
-        [alias('Search')]
-        [hashtable]$SearchText
+        [string]$Parameter
     )
-
+    
     begin {
 
         $AppToken = $Script:AppToken
@@ -135,19 +127,19 @@ function Get-GlpiToolsCartridgeItems {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithTickets { $ParamValue = "?with_tickets=true" }
+            WithTickets { $ParamValue = "?with_tickets=true" } 
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" }
+            WithNotes { $ParamValue = "?with_notes=true" } 
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-
+    
     process {
         switch ($ChoosenParam) {
-            All {
+            All { 
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -157,13 +149,13 @@ function Get-GlpiToolsCartridgeItems {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/CartridgeItem/?range=0-9999999999999"
                 }
-
+                
                 $GlpiCartridgeItemAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiCartridgeItem in $GlpiCartridgeItemAll) {
                     $CartridgeItemHash = [ordered]@{ }
-                            $CartridgeItemProperties = $GlpiCartridgeItem.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $CartridgeItemProperties = $GlpiCartridgeItem.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($CartridgeItemProp in $CartridgeItemProperties) {
                                 $CartridgeItemHash.Add($CartridgeItemProp.Name, $CartridgeItemProp.Value)
                             }
@@ -173,7 +165,7 @@ function Get-GlpiToolsCartridgeItems {
                 $CartridgeItemObjectArray
                 $CartridgeItemObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            CartridgeItemId {
+            CartridgeItemId { 
                 foreach ( $CIId in $CartridgeItemId ) {
                     $params = @{
                         headers = @{
@@ -190,8 +182,8 @@ function Get-GlpiToolsCartridgeItems {
 
                         if ($Raw) {
                             $CartridgeItemHash = [ordered]@{ }
-                            $CartridgeItemProperties = $GlpiCartridgeItem.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $CartridgeItemProperties = $GlpiCartridgeItem.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($CartridgeItemProp in $CartridgeItemProperties) {
                                 $CartridgeItemHash.Add($CartridgeItemProp.Name, $CartridgeItemProp.Value)
                             }
@@ -199,19 +191,13 @@ function Get-GlpiToolsCartridgeItems {
                             $CartridgeItemObjectArray.Add($object)
                         } else {
                             $CartridgeItemHash = [ordered]@{ }
-                            $CartridgeItemProperties = $GlpiCartridgeItem.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $CartridgeItemProperties = $GlpiCartridgeItem.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($CartridgeItemProp in $CartridgeItemProperties) {
 
-                                switch ($CartridgeItemProp.Name) {
-                                    entities_id { $CartridgeItemPropNewValue = $CartridgeItemProp.Value | Get-GlpiToolsEntities | Select-Object -ExpandProperty CompleteName }
-                                    users_id { $CartridgeItemPropNewValue = $CartridgeItemProp.Value | Get-GlpiToolsUsers | Select-Object realname, firstname | ForEach-Object { "{0} {1}" -f $_.firstname,$_.realname } }
-                                    Default {
-                                        $CartridgeItemPropNewValue = $CartridgeItemProp.Value
-                                    }
-                                }
+                                $CartridgePropNewValue = Get-GlpiToolsParameters -Parameter $CartridgeItemProp.Name -Value $CartridgeItemProp.Value
+                                $CartridgeItemHash.Add($CartridgeItemProp.Name, $CartridgePropNewValue)
 
-                                $CartridgeItemHash.Add($CartridgeItemProp.Name, $CartridgeItemPropNewValue)
                             }
                             $object = [pscustomobject]$CartridgeItemHash
                             $CartridgeItemObjectArray.Add($object)
@@ -219,24 +205,21 @@ function Get-GlpiToolsCartridgeItems {
                     } Catch {
 
                         Write-Verbose -Message "CartridgeItem ID = $CIId is not found"
-
+                        
                     }
                     $CartridgeItemObjectArray
                     $CartridgeItemObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            CartridgeItemName {
+            CartridgeItemName { 
                 Search-GlpiToolsItems -SearchFor CartridgeItem -SearchType contains -SearchValue $CartridgeItemName -SearchInTrash $SearchInTrash
             }
-            SearchText {
-                Get-GlpiToolsItems -ItemType "CartridgeItem" -SearchText $SearchText -raw $Raw
-            }
             Default {
-
+                
             }
         }
     }
-
+    
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }
