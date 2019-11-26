@@ -101,6 +101,7 @@ function Update-GlpiToolsItems {
             ItemId {
                 $GlpiUpload = $ItemsHashtableWithoutId | ConvertTo-Json
 
+                $Upload = '{ "input" : ' + $GlpiUpload + '}'
 
                 $params = @{
                     headers = @{
