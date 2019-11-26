@@ -96,7 +96,7 @@ function Update-GlpiToolsItems {
                     uri     = "$($PathToGlpi)/$($UpdateTo)/"
                     body    = ([System.Text.Encoding]::UTF8.GetBytes($JsonPayload))
                 }
-                Invoke-RestMethod @params
+                $UpdateResult = Invoke-RestMethod @params
             }
             ItemId {
                 $GlpiUpload = $ItemsHashtableWithoutId | ConvertTo-Json
@@ -113,10 +113,23 @@ function Update-GlpiToolsItems {
                     uri     = "$($PathToGlpi)/$($UpdateTo)/$($ItemId)"
                     body    = ([System.Text.Encoding]::UTF8.GetBytes($Upload))
                 }
-                Invoke-RestMethod @params
+                $UpdateResult = Invoke-RestMethod @params
             }
             Default { Write-Verbose "You didn't specified any parameter, choose from one available" }
         }
+
+        foreach ($R in @($UpdateResult)){
+            if ($R.message.count -ge 1) {
+                foreach ($R2 in @($R)){
+                     [pscustomobject]@{
+                            id = $(($R2.PSObject.Properties.Where({$_.TypeNameOfValue -EQ "System.Boolean"})).name)
+                            success = $(($R2.PSObject.Properties.Where({$_.TypeNameOfValue -EQ "System.Boolean"})).value)
+                            message = $(($R2.PSObject.Properties.Where({$_.name -EQ "message"})).value)
+                    }
+                }
+            }
+        }
+
     }
 
     end {
