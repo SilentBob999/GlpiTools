@@ -4,7 +4,7 @@
 .DESCRIPTION
     Function Update an object (or multiple objects) into GLPI. You can choose between every items in Asset Tab.\
 .PARAMETER UpdateTo
-    Parameter specify where you want to update object. You can add your custom parameter options to Parameters.json file located in Private folder 
+    Parameter specify where you want to update object. You can add your custom parameter options to Parameters.json file located in Private folder
 .PARAMETER JsonPayload
     Parameter specify a JsonPayload with id of item to be updated, and others fields. You can get values to use, when you run Get-GlpiToolsComputer function.
 .PARAMETER ItemId
@@ -70,7 +70,7 @@ function Update-GlpiToolsItems {
         [alias('JsPa')]
         [array]$JsonPayload
     )
-    
+
     begin {
         $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
@@ -82,7 +82,7 @@ function Update-GlpiToolsItems {
 
         $ChoosenParam = ($PSCmdlet.MyInvocation.BoundParameters).Keys
     }
-    
+
     process {
         switch ($ChoosenParam) {
             JsonPayload {
@@ -101,8 +101,7 @@ function Update-GlpiToolsItems {
             ItemId {
                 $GlpiUpload = $ItemsHashtableWithoutId | ConvertTo-Json
 
-                $Upload = '{ "input" : ' + $GlpiUpload + '}' 
-                
+
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -118,7 +117,7 @@ function Update-GlpiToolsItems {
             Default { Write-Verbose "You didn't specified any parameter, choose from one available" }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }
