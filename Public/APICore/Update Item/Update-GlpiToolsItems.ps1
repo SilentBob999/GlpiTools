@@ -119,6 +119,19 @@ function Update-GlpiToolsItems {
         }
 
         foreach ($R in @($UpdateResult)){
+            if ($R -is [string]) {
+                foreach ($id in @(($JsonPayload | ConvertFrom-Json).input.where({
+                    $_.id -notin @(
+                        $UpdateResult[1].ForEach({$_.PSObject.Properties.Where({$_.TypeNameOfValue -EQ "System.Boolean"}).name})
+                        )
+                    }).id) ){
+                        [pscustomobject]@{
+                            id = $id
+                            success = $false
+                            message = $R
+                        }
+                    }
+            }
             if ($R.message.count -ge 1) {
                 foreach ($R2 in @($R)){
                      [pscustomobject]@{
