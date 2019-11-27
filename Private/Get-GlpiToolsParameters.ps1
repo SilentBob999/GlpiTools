@@ -91,6 +91,16 @@ function Get-GlpiToolsParameters {
                 $ConvertedValue = $Value | Get-GlpiToolsDropdownsPrinterModels -Raw | Select-Object -ExpandProperty name -ErrorAction Stop 
             } elseif ($Parameter -eq "cartridgeitemtypes_id") {
                 $ConvertedValue = $Value | Get-GlpiToolsDropdownsCartridgeTypes -Raw | Select-Object -ExpandProperty name -ErrorAction Stop 
+            } elseif ($Parameter -eq "enclosuremodels_id") {
+                $ConvertedValue = $Value | Get-GlpiToolsDropdownsEnclosureModels -Raw | Select-Object -ExpandProperty name -ErrorAction Stop 
+            } elseif ($Parameter -eq "networkequipmenttypes_id") {
+                $ConvertedValue = $Value | Get-GlpiToolsDropdownsNetworkingEquipmentTypes -Raw | Select-Object -ExpandProperty name -ErrorAction Stop 
+            } elseif ($Parameter -eq "networkequipmentmodels_id") {
+                $ConvertedValue = $Value | Get-GlpiToolsDropdownsNetworkEquipmentModels -Raw | Select-Object -ExpandProperty name -ErrorAction Stop 
+            } elseif ($Parameter -eq "pdumodels_id") {
+                $ConvertedValue = $Value | Get-GlpiToolsDropdownsPduModels -Raw | Select-Object -ExpandProperty name -ErrorAction Stop 
+            } elseif ($Parameter -eq "pdutypes_id") {
+                $ConvertedValue = $Value | Get-GlpiToolsDropdownsPduTypes -Raw | Select-Object -ExpandProperty name -ErrorAction Stop 
             } else {
                 $ConvertedValue = $Value
             }

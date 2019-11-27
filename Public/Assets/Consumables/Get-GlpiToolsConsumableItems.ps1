@@ -18,7 +18,7 @@
     Parameter which you can use with ConsumableItemName Parameter.
     If you want Search for ConsumableItem name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with ConsumableItemId Parameter.
+    Parameter which you can use with ConsumableItemId Parameter. 
     If you want to get additional parameter of ConsumableItem object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsConsumableItems
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsConsumableItems -ConsumableItemId 326
     Function gets ConsumableItemID from GLPI which is provided through -ConsumableItemId after Function type, and return ConsumableItem object
-.EXAMPLE
+.EXAMPLE 
     PS C:\> Get-GlpiToolsConsumableItems -ConsumableItemId 326, 321
     Function gets ConsumableItemID from GLPI which is provided through -ConsumableItemId keyword after Function type (u can provide many ID's like that), and return ConsumableItem object
 .EXAMPLE
@@ -65,9 +65,6 @@ function Get-GlpiToolsConsumableItems {
             ParameterSetName = "ConsumableItemId")]
         [alias('CIID')]
         [string[]]$ConsumableItemId,
-
-        [parameter(Mandatory = $false,
-            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ConsumableItemId")]
         [switch]$Raw,
@@ -101,14 +98,9 @@ function Get-GlpiToolsConsumableItems {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter,
-
-        [parameter(Mandatory = $true,
-            ParameterSetName = "SearchText")]
-        [alias('Search')]
-        [hashtable]$SearchText
+        [string]$Parameter
     )
-
+    
     begin {
 
         $AppToken = $Script:AppToken
@@ -135,19 +127,19 @@ function Get-GlpiToolsConsumableItems {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithTickets { $ParamValue = "?with_tickets=true" }
+            WithTickets { $ParamValue = "?with_tickets=true" } 
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" }
+            WithNotes { $ParamValue = "?with_notes=true" } 
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-
+    
     process {
         switch ($ChoosenParam) {
-            All {
+            All { 
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -157,13 +149,13 @@ function Get-GlpiToolsConsumableItems {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/ConsumableItem/?range=0-9999999999999"
                 }
-
+                
                 $GlpiConsumableItemAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiConsumableItem in $GlpiConsumableItemAll) {
                     $ConsumableItemHash = [ordered]@{ }
-                            $ConsumableItemProperties = $GlpiConsumableItem.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $ConsumableItemProperties = $GlpiConsumableItem.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($ConsumableItemProp in $ConsumableItemProperties) {
                                 $ConsumableItemHash.Add($ConsumableItemProp.Name, $ConsumableItemProp.Value)
                             }
@@ -173,7 +165,7 @@ function Get-GlpiToolsConsumableItems {
                 $ConsumableItemObjectArray
                 $ConsumableItemObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ConsumableItemId {
+            ConsumableItemId { 
                 foreach ( $CIId in $ConsumableItemId ) {
                     $params = @{
                         headers = @{
@@ -190,8 +182,8 @@ function Get-GlpiToolsConsumableItems {
 
                         if ($Raw) {
                             $ConsumableItemHash = [ordered]@{ }
-                            $ConsumableItemProperties = $GlpiConsumableItem.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $ConsumableItemProperties = $GlpiConsumableItem.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($ConsumableItemProp in $ConsumableItemProperties) {
                                 $ConsumableItemHash.Add($ConsumableItemProp.Name, $ConsumableItemProp.Value)
                             }
@@ -199,19 +191,13 @@ function Get-GlpiToolsConsumableItems {
                             $ConsumableItemObjectArray.Add($object)
                         } else {
                             $ConsumableItemHash = [ordered]@{ }
-                            $ConsumableItemProperties = $GlpiConsumableItem.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $ConsumableItemProperties = $GlpiConsumableItem.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($ConsumableItemProp in $ConsumableItemProperties) {
 
-                                switch ($ConsumableItemProp.Name) {
-                                    entities_id { $ConsumableItemPropNewValue = $ConsumableItemProp.Value | Get-GlpiToolsEntities | Select-Object -ExpandProperty CompleteName }
-                                    users_id { $ConsumableItemPropNewValue = $ConsumableItemProp.Value | Get-GlpiToolsUsers | Select-Object realname, firstname | ForEach-Object { "{0} {1}" -f $_.firstname,$_.realname } }
-                                    Default {
-                                        $ConsumableItemPropNewValue = $ConsumableItemProp.Value
-                                    }
-                                }
+                                $ConsumablePropNewValue = Get-GlpiToolsParameters -Parameter $ConsumableItemProp.Name -Value $ConsumableItemProp.Value
 
-                                $ConsumableItemHash.Add($ConsumableItemProp.Name, $ConsumableItemPropNewValue)
+                                $ConsumableItemHash.Add($ConsumableItemProp.Name, $ConsumablePropNewValue)
                             }
                             $object = [pscustomobject]$ConsumableItemHash
                             $ConsumableItemObjectArray.Add($object)
@@ -219,24 +205,21 @@ function Get-GlpiToolsConsumableItems {
                     } Catch {
 
                         Write-Verbose -Message "ConsumableItem ID = $CIId is not found"
-
+                        
                     }
                     $ConsumableItemObjectArray
                     $ConsumableItemObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ConsumableItemName {
+            ConsumableItemName { 
                 Search-GlpiToolsItems -SearchFor ConsumableItem -SearchType contains -SearchValue $ConsumableItemName -SearchInTrash $SearchInTrash
             }
-            SearchText {
-                Get-GlpiToolsItems -ItemType "ConsumableItem" -SearchText $SearchText -raw $Raw
-            }
             Default {
-
+                
             }
         }
     }
-
+    
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

@@ -18,7 +18,7 @@
     Parameter which you can use with PduName Parameter.
     If you want Search for Pdu name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with PduId Parameter.
+    Parameter which you can use with PduId Parameter. 
     If you want to get additional parameter of Pdu object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsPdus
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsPdus -PduId 326
     Function gets PduID from GLPI which is provided through -PduId after Function type, and return Pdu object
-.EXAMPLE
+.EXAMPLE 
     PS C:\> Get-GlpiToolsPdus -PduId 326, 321
     Function gets PduID from GLPI which is provided through -PduId keyword after Function type (u can provide many ID's like that), and return Pdu object
 .EXAMPLE
@@ -65,9 +65,6 @@ function Get-GlpiToolsPdus {
             ParameterSetName = "PduId")]
         [alias('PID')]
         [string[]]$PduId,
-
-        [parameter(Mandatory = $false,
-            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "PduId")]
         [switch]$Raw,
@@ -101,14 +98,9 @@ function Get-GlpiToolsPdus {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter,
-
-        [parameter(Mandatory = $true,
-            ParameterSetName = "SearchText")]
-        [alias('Search')]
-        [hashtable]$SearchText
+        [string]$Parameter
     )
-
+    
     begin {
 
         $AppToken = $Script:AppToken
@@ -135,19 +127,19 @@ function Get-GlpiToolsPdus {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithTickets { $ParamValue = "?with_tickets=true" }
+            WithTickets { $ParamValue = "?with_tickets=true" } 
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" }
+            WithNotes { $ParamValue = "?with_notes=true" } 
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-
+    
     process {
         switch ($ChoosenParam) {
-            All {
+            All { 
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -157,13 +149,13 @@ function Get-GlpiToolsPdus {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Pdu/?range=0-9999999999999"
                 }
-
+                
                 $GlpiPduAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiPdu in $GlpiPduAll) {
                     $PduHash = [ordered]@{ }
-                            $PduProperties = $GlpiPdu.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $PduProperties = $GlpiPdu.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($PduProp in $PduProperties) {
                                 $PduHash.Add($PduProp.Name, $PduProp.Value)
                             }
@@ -173,7 +165,7 @@ function Get-GlpiToolsPdus {
                 $PduObjectArray
                 $PduObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            PduId {
+            PduId { 
                 foreach ( $PId in $PduId ) {
                     $params = @{
                         headers = @{
@@ -190,8 +182,8 @@ function Get-GlpiToolsPdus {
 
                         if ($Raw) {
                             $PduHash = [ordered]@{ }
-                            $PduProperties = $GlpiPdu.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $PduProperties = $GlpiPdu.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($PduProp in $PduProperties) {
                                 $PduHash.Add($PduProp.Name, $PduProp.Value)
                             }
@@ -199,17 +191,11 @@ function Get-GlpiToolsPdus {
                             $PduObjectArray.Add($object)
                         } else {
                             $PduHash = [ordered]@{ }
-                            $PduProperties = $GlpiPdu.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $PduProperties = $GlpiPdu.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($PduProp in $PduProperties) {
 
-                                switch ($PduProp.Name) {
-                                    entities_id { $PduPropNewValue = $PduProp.Value | Get-GlpiToolsEntities | Select-Object -ExpandProperty CompleteName }
-                                    users_id { $PduPropNewValue = $PduProp.Value | Get-GlpiToolsUsers | Select-Object realname, firstname | ForEach-Object { "{0} {1}" -f $_.firstname,$_.realname } }
-                                    Default {
-                                        $PduPropNewValue = $PduProp.Value
-                                    }
-                                }
+                                $PduPropNewValue = Get-GlpiToolsParameters -Parameter $PduProp.Name -Value $PduProp.Value
 
                                 $PduHash.Add($PduProp.Name, $PduPropNewValue)
                             }
@@ -219,24 +205,21 @@ function Get-GlpiToolsPdus {
                     } Catch {
 
                         Write-Verbose -Message "Pdu ID = $PId is not found"
-
+                        
                     }
                     $PduObjectArray
                     $PduObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            PduName {
+            PduName { 
                 Search-GlpiToolsItems -SearchFor Pdu -SearchType contains -SearchValue $PduName -SearchInTrash $SearchInTrash
             }
-            SearchText {
-                Get-GlpiToolsItems -ItemType "Pdu" -SearchText $SearchText -raw $Raw
-            }
             Default {
-
+                
             }
         }
     }
-
+    
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

@@ -18,7 +18,7 @@
     Parameter which you can use with EnclosureName Parameter.
     If you want Search for Enclosure name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with EnclosureId Parameter.
+    Parameter which you can use with EnclosureId Parameter. 
     If you want to get additional parameter of Enclosure object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsEnclosures
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsEnclosures -EnclosureId 326
     Function gets EnclosureID from GLPI which is provided through -EnclosureId after Function type, and return Enclosure object
-.EXAMPLE
+.EXAMPLE 
     PS C:\> Get-GlpiToolsEnclosures -EnclosureId 326, 321
     Function gets EnclosureID from GLPI which is provided through -EnclosureId keyword after Function type (u can provide many ID's like that), and return Enclosure object
 .EXAMPLE
@@ -65,9 +65,6 @@ function Get-GlpiToolsEnclosures {
             ParameterSetName = "EnclosureId")]
         [alias('EID')]
         [string[]]$EnclosureId,
-
-        [parameter(Mandatory = $false,
-            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "EnclosureId")]
         [switch]$Raw,
@@ -101,14 +98,9 @@ function Get-GlpiToolsEnclosures {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter,
-
-        [parameter(Mandatory = $true,
-            ParameterSetName = "SearchText")]
-        [alias('Search')]
-        [hashtable]$SearchText
+        [string]$Parameter
     )
-
+    
     begin {
 
         $AppToken = $Script:AppToken
@@ -135,19 +127,19 @@ function Get-GlpiToolsEnclosures {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithTickets { $ParamValue = "?with_tickets=true" }
+            WithTickets { $ParamValue = "?with_tickets=true" } 
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" }
+            WithNotes { $ParamValue = "?with_notes=true" } 
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-
+    
     process {
         switch ($ChoosenParam) {
-            All {
+            All { 
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -157,13 +149,13 @@ function Get-GlpiToolsEnclosures {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Enclosure/?range=0-9999999999999"
                 }
-
+                
                 $GlpiEnclosureAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiEnclosure in $GlpiEnclosureAll) {
                     $EnclosureHash = [ordered]@{ }
-                            $EnclosureProperties = $GlpiEnclosure.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $EnclosureProperties = $GlpiEnclosure.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($EnclosureProp in $EnclosureProperties) {
                                 $EnclosureHash.Add($EnclosureProp.Name, $EnclosureProp.Value)
                             }
@@ -173,7 +165,7 @@ function Get-GlpiToolsEnclosures {
                 $EnclosureObjectArray
                 $EnclosureObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            EnclosureId {
+            EnclosureId { 
                 foreach ( $EId in $EnclosureId ) {
                     $params = @{
                         headers = @{
@@ -190,8 +182,8 @@ function Get-GlpiToolsEnclosures {
 
                         if ($Raw) {
                             $EnclosureHash = [ordered]@{ }
-                            $EnclosureProperties = $GlpiEnclosure.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $EnclosureProperties = $GlpiEnclosure.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($EnclosureProp in $EnclosureProperties) {
                                 $EnclosureHash.Add($EnclosureProp.Name, $EnclosureProp.Value)
                             }
@@ -199,17 +191,11 @@ function Get-GlpiToolsEnclosures {
                             $EnclosureObjectArray.Add($object)
                         } else {
                             $EnclosureHash = [ordered]@{ }
-                            $EnclosureProperties = $GlpiEnclosure.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $EnclosureProperties = $GlpiEnclosure.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($EnclosureProp in $EnclosureProperties) {
 
-                                switch ($EnclosureProp.Name) {
-                                    entities_id { $EnclosurePropNewValue = $EnclosureProp.Value | Get-GlpiToolsEntities | Select-Object -ExpandProperty CompleteName }
-                                    users_id { $EnclosurePropNewValue = $EnclosureProp.Value | Get-GlpiToolsUsers | Select-Object realname, firstname | ForEach-Object { "{0} {1}" -f $_.firstname,$_.realname } }
-                                    Default {
-                                        $EnclosurePropNewValue = $EnclosureProp.Value
-                                    }
-                                }
+                                $EnclosurePropNewValue = Get-GlpiToolsParameters -Parameter $EnclosureProp.Name -Value $EnclosureProp.Value
 
                                 $EnclosureHash.Add($EnclosureProp.Name, $EnclosurePropNewValue)
                             }
@@ -219,24 +205,21 @@ function Get-GlpiToolsEnclosures {
                     } Catch {
 
                         Write-Verbose -Message "Enclosure ID = $EId is not found"
-
+                        
                     }
                     $EnclosureObjectArray
                     $EnclosureObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            EnclosureName {
+            EnclosureName { 
                 Search-GlpiToolsItems -SearchFor Enclosure -SearchType contains -SearchValue $EnclosureName -SearchInTrash $SearchInTrash
             }
-            SearchText {
-                Get-GlpiToolsItems -ItemType "Enclosure" -SearchText $SearchText -raw $Raw
-            }
             Default {
-
+                
             }
         }
     }
-
+    
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }
