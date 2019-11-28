@@ -18,7 +18,7 @@
     Parameter which you can use with ProblemName Parameter.
     If you want Search for Problem name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with ProblemId Parameter.
+    Parameter which you can use with ProblemId Parameter. 
     If you want to get additional parameter of Problem object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsProblems
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsProblems -ProblemId 326
     Function gets ProblemID from GLPI which is provided through -ProblemId after Function type, and return Problem object
-.EXAMPLE
+.EXAMPLE 
     PS C:\> Get-GlpiToolsProblems -ProblemId 326, 321
     Function gets ProblemID from GLPI which is provided through -ProblemId keyword after Function type (u can provide many ID's like that), and return Problem object
 .EXAMPLE
@@ -65,9 +65,6 @@ function Get-GlpiToolsProblems {
             ParameterSetName = "ProblemId")]
         [alias('PID')]
         [string[]]$ProblemId,
-
-        [parameter(Mandatory = $false,
-            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "ProblemId")]
         [switch]$Raw,
@@ -97,15 +94,9 @@ function Get-GlpiToolsProblems {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter,
-
-        [parameter(Mandatory = $true,
-            ParameterSetName = "SearchText")]
-        [alias('Search')]
-        [hashtable]$SearchText
-
+        [string]$Parameter
     )
-
+    
     begin {
 
         $AppToken = $Script:AppToken
@@ -128,19 +119,19 @@ function Get-GlpiToolsProblems {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithProblems { $ParamValue = "?with_Problems=true" }
+            WithProblems { $ParamValue = "?with_Problems=true" } 
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" }
+            WithNotes { $ParamValue = "?with_notes=true" } 
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-
+    
     process {
         switch ($ChoosenParam) {
-            All {
+            All { 
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -150,13 +141,13 @@ function Get-GlpiToolsProblems {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Problem/?range=0-9999999999999"
                 }
-
+                
                 $GlpiProblemAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiProblem in $GlpiProblemAll) {
                     $ProblemHash = [ordered]@{ }
-                            $ProblemProperties = $GlpiProblem.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $ProblemProperties = $GlpiProblem.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($ProblemProp in $ProblemProperties) {
                                 $ProblemHash.Add($ProblemProp.Name, $ProblemProp.Value)
                             }
@@ -166,7 +157,7 @@ function Get-GlpiToolsProblems {
                 $ProblemObjectArray
                 $ProblemObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            ProblemId {
+            ProblemId { 
                 foreach ( $PId in $ProblemId ) {
                     $params = @{
                         headers = @{
@@ -183,8 +174,8 @@ function Get-GlpiToolsProblems {
 
                         if ($Raw) {
                             $ProblemHash = [ordered]@{ }
-                            $ProblemProperties = $GlpiProblem.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $ProblemProperties = $GlpiProblem.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($ProblemProp in $ProblemProperties) {
                                 $ProblemHash.Add($ProblemProp.Name, $ProblemProp.Value)
                             }
@@ -192,18 +183,11 @@ function Get-GlpiToolsProblems {
                             $ProblemObjectArray.Add($object)
                         } else {
                             $ProblemHash = [ordered]@{ }
-                            $ProblemProperties = $GlpiProblem.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $ProblemProperties = $GlpiProblem.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($ProblemProp in $ProblemProperties) {
 
-                                switch ($ProblemProp.Name) {
-                                    entities_id { $ProblemPropNewValue = $ProblemProp.Value | Get-GlpiToolsEntities | Select-Object -ExpandProperty CompleteName }
-                                    users_id_recipient { $ProblemPropNewValue = $ProblemProp.Value | Get-GlpiToolsUsers | Select-Object realname, firstname | ForEach-Object { "{0} {1}" -f $_.firstname,$_.realname } }
-                                    users_id_lastupdater { $ProblemPropNewValue = $ProblemProp.Value | Get-GlpiToolsUsers | Select-Object realname, firstname | ForEach-Object { "{0} {1}" -f $_.firstname,$_.realname } }
-                                    Default {
-                                        $ProblemPropNewValue = $ProblemProp.Value
-                                    }
-                                }
+                                $ProblemPropNewValue = Get-GlpiToolsParameters -Parameter $ProblemProp.Name -Value $ProblemProp.Value
 
                                 $ProblemHash.Add($ProblemProp.Name, $ProblemPropNewValue)
                             }
@@ -213,24 +197,21 @@ function Get-GlpiToolsProblems {
                     } Catch {
 
                         Write-Verbose -Message "Problem ID = $PId is not found"
-
+                        
                     }
                     $ProblemObjectArray
                     $ProblemObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            ProblemName {
+            ProblemName { 
                 Search-GlpiToolsItems -SearchFor Problem -SearchType contains -SearchValue $ProblemName -SearchInTrash $SearchInTrash
             }
-            SearchText {
-                Get-GlpiToolsItems -ItemType "Problem" -SearchText $SearchText -raw $Raw
-            }
             Default {
-
+                
             }
         }
     }
-
+    
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

@@ -18,7 +18,7 @@
     Parameter which you can use with RackName Parameter.
     If you want Search for Rack name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with RackId Parameter.
+    Parameter which you can use with RackId Parameter. 
     If you want to get additional parameter of Rack object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsRacks
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsRacks -RackId 326
     Function gets RackID from GLPI which is provided through -RackId after Function type, and return Rack object
-.EXAMPLE
+.EXAMPLE 
     PS C:\> Get-GlpiToolsRacks -RackId 326, 321
     Function gets RackID from GLPI which is provided through -RackId keyword after Function type (u can provide many ID's like that), and return Rack object
 .EXAMPLE
@@ -65,9 +65,6 @@ function Get-GlpiToolsRacks {
             ParameterSetName = "RackId")]
         [alias('RID')]
         [string[]]$RackId,
-
-        [parameter(Mandatory = $false,
-            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "RackId")]
         [switch]$Raw,
@@ -101,14 +98,9 @@ function Get-GlpiToolsRacks {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter,
-
-        [parameter(Mandatory = $true,
-            ParameterSetName = "SearchText")]
-        [alias('Search')]
-        [hashtable]$SearchText
+        [string]$Parameter
     )
-
+    
     begin {
 
         $AppToken = $Script:AppToken
@@ -135,19 +127,19 @@ function Get-GlpiToolsRacks {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithTickets { $ParamValue = "?with_tickets=true" }
+            WithTickets { $ParamValue = "?with_tickets=true" } 
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" }
+            WithNotes { $ParamValue = "?with_notes=true" } 
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-
+    
     process {
         switch ($ChoosenParam) {
-            All {
+            All { 
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -157,13 +149,13 @@ function Get-GlpiToolsRacks {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Rack/?range=0-9999999999999"
                 }
-
+                
                 $GlpiRackAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiRack in $GlpiRackAll) {
                     $RackHash = [ordered]@{ }
-                            $RackProperties = $GlpiRack.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $RackProperties = $GlpiRack.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($RackProp in $RackProperties) {
                                 $RackHash.Add($RackProp.Name, $RackProp.Value)
                             }
@@ -173,7 +165,7 @@ function Get-GlpiToolsRacks {
                 $RackObjectArray
                 $RackObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            RackId {
+            RackId { 
                 foreach ( $RId in $RackId ) {
                     $params = @{
                         headers = @{
@@ -190,8 +182,8 @@ function Get-GlpiToolsRacks {
 
                         if ($Raw) {
                             $RackHash = [ordered]@{ }
-                            $RackProperties = $GlpiRack.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $RackProperties = $GlpiRack.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($RackProp in $RackProperties) {
                                 $RackHash.Add($RackProp.Name, $RackProp.Value)
                             }
@@ -199,17 +191,11 @@ function Get-GlpiToolsRacks {
                             $RackObjectArray.Add($object)
                         } else {
                             $RackHash = [ordered]@{ }
-                            $RackProperties = $GlpiRack.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $RackProperties = $GlpiRack.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($RackProp in $RackProperties) {
 
-                                switch ($RackProp.Name) {
-                                    entities_id { $RackPropNewValue = $RackProp.Value | Get-GlpiToolsEntities | Select-Object -ExpandProperty CompleteName }
-                                    users_id { $RackPropNewValue = $RackProp.Value | Get-GlpiToolsUsers | Select-Object realname, firstname | ForEach-Object { "{0} {1}" -f $_.firstname,$_.realname } }
-                                    Default {
-                                        $RackPropNewValue = $RackProp.Value
-                                    }
-                                }
+                                $RackPropNewValue = Get-GlpiToolsParameters -Parameter $RackProp.Name -Value $RackProp.Value
 
                                 $RackHash.Add($RackProp.Name, $RackPropNewValue)
                             }
@@ -219,24 +205,21 @@ function Get-GlpiToolsRacks {
                     } Catch {
 
                         Write-Verbose -Message "Rack ID = $RId is not found"
-
+                        
                     }
                     $RackObjectArray
                     $RackObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            RackName {
+            RackName { 
                 Search-GlpiToolsItems -SearchFor Rack -SearchType contains -SearchValue $RackName -SearchInTrash $SearchInTrash
             }
-            SearchText {
-                Get-GlpiToolsItems -ItemType "Rack" -SearchText $SearchText -raw $Raw
-            }
             Default {
-
+                
             }
         }
     }
-
+    
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }

@@ -18,7 +18,7 @@
     Parameter which you can use with TicketName Parameter.
     If you want Search for Ticket name in trash, that parameter allow you to do it.
 .PARAMETER Parameter
-    Parameter which you can use with TicketId Parameter.
+    Parameter which you can use with TicketId Parameter. 
     If you want to get additional parameter of Ticket object like, disks, or logs, use this parameter.
 .EXAMPLE
     PS C:\> 326 | Get-GlpiToolsTickets
@@ -29,7 +29,7 @@
 .EXAMPLE
     PS C:\> Get-GlpiToolsTickets -TicketId 326
     Function gets TicketID from GLPI which is provided through -TicketId after Function type, and return Ticket object
-.EXAMPLE
+.EXAMPLE 
     PS C:\> Get-GlpiToolsTickets -TicketId 326, 321
     Function gets TicketID from GLPI which is provided through -TicketId keyword after Function type (u can provide many ID's like that), and return Ticket object
 .EXAMPLE
@@ -65,9 +65,6 @@ function Get-GlpiToolsTickets {
             ParameterSetName = "TicketId")]
         [alias('TID')]
         [string[]]$TicketId,
-
-        [parameter(Mandatory = $false,
-            ParameterSetName = "SearchText")]
         [parameter(Mandatory = $false,
             ParameterSetName = "TicketId")]
         [switch]$Raw,
@@ -97,14 +94,9 @@ function Get-GlpiToolsTickets {
             "WithChanges",
             "WithNotes",
             "WithLogs")]
-        [string]$Parameter,
-
-        [parameter(Mandatory = $true,
-            ParameterSetName = "SearchText")]
-        [alias('Search')]
-        [hashtable]$SearchText
+        [string]$Parameter
     )
-
+    
     begin {
 
         $AppToken = $Script:AppToken
@@ -127,19 +119,19 @@ function Get-GlpiToolsTickets {
             WithInfocoms { $ParamValue = "?with_infocoms=true" }
             WithContracts { $ParamValue = "?with_contracts=true" }
             WithDocuments { $ParamValue = "?with_documents=true" }
-            WithTickets { $ParamValue = "?with_tickets=true" }
+            WithTickets { $ParamValue = "?with_tickets=true" } 
             WithProblems { $ParamValue = "?with_problems=true" }
             WithChanges { $ParamValue = "?with_changes=true" }
-            WithNotes { $ParamValue = "?with_notes=true" }
+            WithNotes { $ParamValue = "?with_notes=true" } 
             WithLogs { $ParamValue = "?with_logs=true" }
             Default { $ParamValue = "" }
         }
 
     }
-
+    
     process {
         switch ($ChoosenParam) {
-            All {
+            All { 
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -149,13 +141,13 @@ function Get-GlpiToolsTickets {
                     method  = 'get'
                     uri     = "$($PathToGlpi)/Ticket/?range=0-9999999999999"
                 }
-
+                
                 $GlpiTicketAll = Invoke-RestMethod @params -Verbose:$false
 
                 foreach ($GlpiTicket in $GlpiTicketAll) {
                     $TicketHash = [ordered]@{ }
-                            $TicketProperties = $GlpiTicket.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $TicketProperties = $GlpiTicket.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($TicketProp in $TicketProperties) {
                                 $TicketHash.Add($TicketProp.Name, $TicketProp.Value)
                             }
@@ -165,7 +157,7 @@ function Get-GlpiToolsTickets {
                 $TicketObjectArray
                 $TicketObjectArray = [System.Collections.Generic.List[PSObject]]::New()
             }
-            TicketId {
+            TicketId { 
                 foreach ( $TId in $TicketId ) {
                     $params = @{
                         headers = @{
@@ -182,8 +174,8 @@ function Get-GlpiToolsTickets {
 
                         if ($Raw) {
                             $TicketHash = [ordered]@{ }
-                            $TicketProperties = $GlpiTicket.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $TicketProperties = $GlpiTicket.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($TicketProp in $TicketProperties) {
                                 $TicketHash.Add($TicketProp.Name, $TicketProp.Value)
                             }
@@ -191,18 +183,11 @@ function Get-GlpiToolsTickets {
                             $TicketObjectArray.Add($object)
                         } else {
                             $TicketHash = [ordered]@{ }
-                            $TicketProperties = $GlpiTicket.PSObject.Properties | Select-Object -Property Name, Value
-
+                            $TicketProperties = $GlpiTicket.PSObject.Properties | Select-Object -Property Name, Value 
+                                
                             foreach ($TicketProp in $TicketProperties) {
 
-                                switch ($TicketProp.Name) {
-                                    entities_id { $TicketPropNewValue = $TicketProp.Value | Get-GlpiToolsEntities | Select-Object -ExpandProperty CompleteName }
-                                    users_id_recipient { $TicketPropNewValue = $TicketProp.Value | Get-GlpiToolsUsers -raw | Select-Object realname, firstname | ForEach-Object { "{0} {1}" -f $_.firstname,$_.realname } }
-                                    users_id_lastupdater { $TicketPropNewValue = $TicketProp.Value | Get-GlpiToolsUsers -raw | Select-Object realname, firstname | ForEach-Object { "{0} {1}" -f $_.firstname,$_.realname } }
-                                    Default {
-                                        $TicketPropNewValue = $TicketProp.Value
-                                    }
-                                }
+                                $TicketPropNewValue = Get-GlpiToolsParameters -Parameter $TicketProp.Name -Value $TicketProp.Value
 
                                 $TicketHash.Add($TicketProp.Name, $TicketPropNewValue)
                             }
@@ -212,24 +197,21 @@ function Get-GlpiToolsTickets {
                     } Catch {
 
                         Write-Verbose -Message "Ticket ID = $TId is not found"
-
+                        
                     }
                     $TicketObjectArray
                     $TicketObjectArray = [System.Collections.Generic.List[PSObject]]::New()
                 }
             }
-            TicketName {
+            TicketName { 
                 Search-GlpiToolsItems -SearchFor Ticket -SearchType contains -SearchValue $TicketName -SearchInTrash $SearchInTrash
             }
-            SearchText {
-                Get-GlpiToolsItems -ItemType "Ticket" -SearchText $SearchText -raw $Raw
-            }
             Default {
-
+                
             }
         }
     }
-
+    
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken -Verbose:$false
     }
