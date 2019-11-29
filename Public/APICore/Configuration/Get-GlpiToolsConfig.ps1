@@ -10,7 +10,7 @@
 .INPUTS
     None
 .OUTPUTS
-    Function creates PSCustomObject 
+    Function creates PSCustomObject
 .NOTES
     PSP 12/2018
 #>
@@ -18,9 +18,9 @@
 function Get-GlpiToolsConfig {
     [CmdletBinding()]
     param (
-        
+
     )
-    
+
     begin {
 
         if ($IsLinux) {
@@ -32,24 +32,24 @@ function Get-GlpiToolsConfig {
             $GlpiConfig = @()
             $ConfigFile = "Configuration.json"
             $ConfigPath = "$env:LOCALAPPDATA\GlpiToolsConfig\"
-            $Config = Join-Path -Path $ConfigPath -ChildPath $ConfigFile 
+            $Config = Join-Path -Path $ConfigPath -ChildPath $ConfigFile
         }
 
     }
-    
+
     process {
 
         if (Test-Path -Path $Config) {
             $ConfigData = Get-Content $Config | ConvertFrom-Json
-        
+
             $AppTokenSS = ConvertTo-SecureString $ConfigData.AppToken
             $UserTokenSS = ConvertTo-SecureString $ConfigData.UserToken
             $PathToGlpiSS = ConvertTo-SecureString $ConfigData.PathToGlpi
-        
+
             $AppTokenDecrypt = [System.Runtime.InteropServices.marshal]::PtrToStringAuto([System.Runtime.InteropServices.marshal]::SecureStringToBSTR($AppTokenSS))
             $UserTokenDecrypt = [System.Runtime.InteropServices.marshal]::PtrToStringAuto([System.Runtime.InteropServices.marshal]::SecureStringToBSTR($UserTokenSS))
             $PathToGlpiDecrypt = [System.Runtime.InteropServices.marshal]::PtrToStringAuto([System.Runtime.InteropServices.marshal]::SecureStringToBSTR($PathToGlpiSS))
-            
+
             $ConfigHash = [ordered]@{
                 'AppToken' = $AppTokenDecrypt
                 'UserToken' = $UserTokenDecrypt
@@ -57,15 +57,18 @@ function Get-GlpiToolsConfig {
             }
 
             $object = New-Object -TypeName PSCustomObject -Property $ConfigHash
-            $GlpiConfig += $object 
-            
+            $GlpiConfig += $object
+
         }
         else {
-            Write-Warning -Message "I cannot find Config File, check if you used Set-GlpiToolsConfig to generate Config"
+            $CustomMessage = "I cannot find Config File, check if you used Set-GlpiToolsConfig to generate Config"
+            $CustomError = New-Object Management.Automation.ErrorRecord (
+                [System.Exception]::new($CustomMessage ,$_.Exception),'NotSpecified','OperationStopped',$_)
+            $PScmdlet.ThrowTerminatingError($CustomError)
         }
 
     }
-    
+
     end {
         $GlpiConfig
     }
