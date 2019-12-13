@@ -140,7 +140,7 @@ function Get-GlpiToolsItems{
         foreach ($GlpiObject in $GlpiObjectAll) {
             if ($Raw -or (@($GlpiObjectAll).count -gt 1) ) {
                 $ObjectHash = [ordered]@{ }
-                $ObjectProperties = $GlpiObject.PSObject.Properties | Select-Object -Property Name, Value
+                $ObjectProperties = $GlpiObject.PSObject.Properties
 
                 foreach ($ObjectProp in $ObjectProperties) {
                     $ObjectHash.Add($ObjectProp.Name, $ObjectProp.Value)
@@ -149,7 +149,7 @@ function Get-GlpiToolsItems{
                 $GlpiObjectArray.Add($object)
             } else {
                 $ObjectHash = [ordered]@{ }
-                $ObjectProperties = $GlpiObject.PSObject.Properties | Select-Object -Property Name, Value
+                $ObjectProperties = $GlpiObject.PSObject.Properties
 
                 foreach ($ObjectProp in $ObjectProperties) {
 
