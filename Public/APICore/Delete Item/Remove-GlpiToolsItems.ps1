@@ -4,10 +4,10 @@
 .DESCRIPTION
     Remove an object existing in GLPI. You can choose between every items in Asset Tab.
 .PARAMETER RemoveFrom
-    Parameter specify where you want to Remove object. 
+    Parameter specify where you want to Remove object.
     You can add your custom parameter options to Parameters.json file located in Private folder
 .PARAMETER ItemId
-    Paremter which indicate on item id to Remove. 
+    Paremter which indicate on item id to Remove.
 .PARAMETER HashtableToAdd
     Parameter specify a hashtable with fields of itemtype to be Removed.
 .PARAMETER JsonPayload
@@ -21,7 +21,7 @@
     PS C:\> Remove-GlpiToolsItems -RemoveFrom Computer -ItemId 1 -Purge
     Command will Remove item with id 1. Command will Remove item from trashbin too.
 .EXAMPLE
-    PS C:\> $example =  @{id = "1"} 
+    PS C:\> $example =  @{id = "1"}
     PS C:\> Remove-GlpiToolsItems -RemoveFrom Computer -HashtableToRemove $example
     Example will Remove item from Computers.
 .EXAMPLE
@@ -40,7 +40,7 @@
     PS C:\> Remove-GlpiToolsItems -RemoveFrom Computer -JsonPayload $example
     Example will Add items into Computers
 .INPUTS
-    Id of item, hashtable, JsonPayload. 
+    Id of item, hashtable, JsonPayload.
 .OUTPUTS
     Information with id and message, which items were added.
 .NOTES
@@ -72,7 +72,7 @@ function Remove-GlpiToolsItems {
         [parameter(Mandatory = $false)]
         [switch]$Purge
     )
-    
+
     begin {
         $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
@@ -88,7 +88,7 @@ function Remove-GlpiToolsItems {
             $PurgeValue = '?force_purge=true'
         }
     }
-    
+
     process {
         switch ($ChoosenParam) {
             ItemId {
@@ -101,13 +101,13 @@ function Remove-GlpiToolsItems {
                     method  = 'delete'
                     uri     = "$($PathToGlpi)/$($RemoveFrom)/$($ItemId)$($PurgeValue)"
                 }
-                Invoke-RestMethod @params
+                $RemoveResult = Invoke-RestMethod @params
             }
             HashtableToRemove {
                 $GlpiRemove = $HashtableToRemove | ConvertTo-Json
 
-                $Remove = '{ "input" : ' + $GlpiRemove + '}' 
-                
+                $Remove = '{ "input" : ' + $GlpiRemove + '}'
+
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -118,7 +118,7 @@ function Remove-GlpiToolsItems {
                     uri     = "$($PathToGlpi)/$($RemoveFrom)/"
                     body    = ([System.Text.Encoding]::UTF8.GetBytes($Remove))
                 }
-                Invoke-RestMethod @params
+                $RemoveResult = Invoke-RestMethod @params
             }
             JsonPayload {
                 $params = @{
@@ -131,12 +131,37 @@ function Remove-GlpiToolsItems {
                     uri     = "$($PathToGlpi)/$($RemoveFrom)/"
                     body    = ([System.Text.Encoding]::UTF8.GetBytes($JsonPayload))
                 }
-                Invoke-RestMethod @params
+                $RemoveResult = Invoke-RestMethod @params
             }
             Default { Write-Verbose "You didn't specified any parameter, choose from one available" }
         }
+
+        foreach ($R in @($RemoveResult)){
+            if ($R -is [string]) {
+                foreach ($id in @(($JsonPayload | ConvertFrom-Json).input.where({
+                    $_.id -notin @(
+                        $RemoveResult[1].ForEach({$_.PSObject.Properties.Where({$_.TypeNameOfValue -EQ "System.Boolean"}).name})
+                        )
+                    }).id) ){
+                        [pscustomobject]@{
+                            id = $id
+                            success = $false
+                            message = $R
+                        }
+                    }
+            }
+            if ($R.message.count -ge 1) {
+                foreach ($R2 in @($R)){
+                     [pscustomobject]@{
+                            id = $(($R2.PSObject.Properties.Where({$_.TypeNameOfValue -EQ "System.Boolean"})).name)
+                            success = $(($R2.PSObject.Properties.Where({$_.TypeNameOfValue -EQ "System.Boolean"})).value)
+                            message = $(($R2.PSObject.Properties.Where({$_.name -EQ "message"})).value)
+                    }
+                }
+            }
+        }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }
