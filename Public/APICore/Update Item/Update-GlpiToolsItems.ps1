@@ -68,7 +68,11 @@ function Update-GlpiToolsItems {
         [parameter(Mandatory = $true,
             ParameterSetName = "JsonPayload")]
         [alias('JsPa')]
-        [array]$JsonPayload
+        [array]$JsonPayload,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "JsonPayload")]
+        [bigint]$MaxPayLoadSize = 100000
     )
 
     begin {
@@ -86,17 +90,47 @@ function Update-GlpiToolsItems {
     process {
         switch ($ChoosenParam) {
             JsonPayload {
-                $params = @{
-                    headers = @{
-                        'Content-Type'  = 'application/json'
-                        'App-Token'     = $AppToken
-                        'Session-Token' = $SessionToken
+                $bodyArray = [System.Collections.Generic.List[object]]::new()
+                $UpdateResult = [System.Collections.Generic.List[object]]::new()
+                $PayLoadBytes = ([System.Text.Encoding]::UTF8.GetBytes($JsonPayload))
+                if ( $PayLoadBytes.Length -ge $MaxPayLoadSize ) {
+                    $data = ($JsonPayload | ConvertFrom-Json).input
+                    $max = $($data.count *  $MaxPayLoadSize / $PayLoadBytes.Length)
+                    $Divider = [math]::ceiling($data.count / $max)
+                    $max2 = [math]::ceiling($data.count / $Divider)
+                    for ($i=0;$i -lt $(@($data).Count); $i+=($max2 + 1)){
+                        $end = [System.Math]::min($i+$max2,@($data).Count)
+                        $bodyArray.Add( ([System.Text.Encoding]::UTF8.GetBytes( $( @{input = $JsonPayload[$i..$end] }  |  ConvertTo-Json -Compress ) )) )
                     }
-                    method  = 'put'
-                    uri     = "$($PathToGlpi)/$($UpdateTo)/"
-                    body    = ([System.Text.Encoding]::UTF8.GetBytes($JsonPayload))
+                } else {
+                    $bodyArray.Add($PayLoadBytes)
                 }
-                $UpdateResult = Invoke-RestMethod @params
+                foreach ($body in $bodyArray) {
+                    try {
+                        $params = @{
+                            headers = @{
+                                'Content-Type'  = 'application/json'
+                                'App-Token'     = $AppToken
+                                'Session-Token' = $SessionToken
+                            }
+                            method  = 'put'
+                            uri     = "$($PathToGlpi)/$($UpdateTo)/"
+                            body    = $body
+                        }
+                        Invoke-RestMethod @params | ForEach-Object { $UpdateResult.Add($_) }
+                    }
+                    catch {
+                        $errors = $_
+                        if ( $errors.Exception.Message -like "*The underlying connection was closed*" ) {
+                            $CustomMessage = "Connection failure detected, consider using a smaller MaxPayLoadSize`n$errors.Exception.Message"
+                            $CustomError = New-Object Management.Automation.ErrorRecord (
+                                [System.Exception]::new($CustomMessage ,$errors.Exception.InnerException),$errors.FullyQualifiedErrorId,$errors.CategoryInfo.Category,$errors)
+                            $PScmdlet.ThrowTerminatingError($CustomError)
+                        } else {
+                            throw $PSItem
+                        }
+                    }
+                }
             }
             ItemId {
                 $GlpiUpload = $ItemsHashtableWithoutId | ConvertTo-Json

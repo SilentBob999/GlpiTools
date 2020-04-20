@@ -5,7 +5,7 @@
     Function Add an object (or multiple objects) into GLPI. You can choose between every items in Asset Tab.
 .PARAMETER AddTo
     Parameter specify where you want to add new object.
-    You can add your custom parameter options to Parameters.json file located in Private folder 
+    You can add your custom parameter options to Parameters.json file located in Private folder
 .PARAMETER HashtableToAdd
     Parameter specify a hashtable with fields of itemtype to be inserted.
 .PARAMETER JsonPayload
@@ -61,10 +61,14 @@ function Add-GlpiToolsItems {
         [parameter(Mandatory = $false,
             ParameterSetName = "JsonPayload")]
         [alias('JsPa')]
-        [array]$JsonPayload
-        
+        [array]$JsonPayload,
+
+        [parameter(Mandatory = $false,
+            ParameterSetName = "JsonPayload")]
+        [bigint]$MaxPayLoadSize = 100000
+
     )
-    
+
     begin {
         $SessionToken = $Script:SessionToken
         $AppToken = $Script:AppToken
@@ -76,15 +80,15 @@ function Add-GlpiToolsItems {
 
         $ChoosenParam = ($PSCmdlet.MyInvocation.BoundParameters).Keys
     }
-    
+
     process {
 
         switch ($ChoosenParam) {
             HashtableToAdd {
                 $GlpiUpload = $HashtableToAdd | ConvertTo-Json
 
-                $Upload = '{ "input" : ' + $GlpiUpload + '}' 
-                
+                $Upload = '{ "input" : ' + $GlpiUpload + '}'
+
                 $params = @{
                     headers = @{
                         'Content-Type'  = 'application/json'
@@ -98,22 +102,54 @@ function Add-GlpiToolsItems {
                 Invoke-RestMethod @params
             }
             JsonPayload {
-                $params = @{
-                    headers = @{
-                        'Content-Type'  = 'application/json'
-                        'App-Token'     = $AppToken
-                        'Session-Token' = $SessionToken
+                $bodyArray = [System.Collections.Generic.List[object]]::new()
+                $PayLoadBytes = ([System.Text.Encoding]::UTF8.GetBytes($JsonPayload))
+                if ( $PayLoadBytes.Length -gt $MaxPayLoadSize ) {
+                    $data = ($JsonPayload | ConvertFrom-Json).input
+                    $max = $(@($data).count *  $MaxPayLoadSize / $PayLoadBytes.Length)
+                    $Divider = $(@($data).count / $max)
+                    $max2 = $(@($data).count / $Divider)
+                    if ($max2 -isnot [int]) {
+                        $max2 = [math]::ceiling( [double]$max2 )
                     }
-                    method  = 'post'
-                    uri     = "$($PathToGlpi)/$($AddTo)/"
-                    body    = ([System.Text.Encoding]::UTF8.GetBytes($JsonPayload))
+                    for ($i=0;$i -lt $(@($data).Count); $i+=($max2 + 1)){
+                        $end = [System.Math]::min($i+$max2,@($data).Count)
+                        $bodyArray.Add( ([System.Text.Encoding]::UTF8.GetBytes( $( @{input = $JsonPayload[$i..$end] }  |  ConvertTo-Json -Compress ) )) )
+                    }
+                } else {
+                    $bodyArray.Add($PayLoadBytes)
                 }
-                Invoke-RestMethod @params
+                foreach ($body in $bodyArray) {
+                    try {
+                        $params = @{
+                            headers = @{
+                                'Content-Type'  = 'application/json'
+                                'App-Token'     = $AppToken
+                                'Session-Token' = $SessionToken
+                            }
+                            method  = 'post'
+                            uri     = "$($PathToGlpi)/$($AddTo)/"
+                            body    = $body
+                        }
+                        Invoke-RestMethod @params
+                    }
+                    catch {
+                        $errors = $_
+                        if ( $errors.Exception.Message -like "*The underlying connection was closed*" ) {
+                            $CustomMessage = "Connection failure detected, consider using a smaller MaxPayLoadSize`n$errors.Exception.Message"
+                            $CustomError = New-Object Management.Automation.ErrorRecord (
+                                [System.Exception]::new($CustomMessage ,$errors.Exception.InnerException),$errors.FullyQualifiedErrorId,$errors.CategoryInfo.Category,$errors)
+                            $PScmdlet.ThrowTerminatingError($CustomError)
+                        } else {
+                            throw $PSItem
+                        }
+                    }
+                }
             }
             Default { Write-Verbose "You didn't specified any parameter, choose from one available" }
         }
     }
-    
+
     end {
         Set-GlpiToolsKillSession -SessionToken $SessionToken
     }
