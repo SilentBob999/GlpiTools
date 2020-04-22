@@ -82,6 +82,7 @@ function Add-GlpiToolsItems {
     }
 
     process {
+        $AddResult = [System.Collections.Generic.List[object]]::new()
 
         switch ($ChoosenParam) {
             HashtableToAdd {
@@ -99,7 +100,7 @@ function Add-GlpiToolsItems {
                     uri     = "$($PathToGlpi)/$($AddTo)/"
                     body    = ([System.Text.Encoding]::UTF8.GetBytes($Upload))
                 }
-                Invoke-RestMethod @params
+                Invoke-RestMethod @params  | ForEach-Object { $AddResult.Add($_) }
             }
             JsonPayload {
                 $bodyArray = [System.Collections.Generic.List[object]]::new()
@@ -136,6 +137,7 @@ function Add-GlpiToolsItems {
                             body    = $body
                         }
                         Write-Verbose "RestMethod : Addto $AddTo, body length : $($body.Length)"
+                        Invoke-RestMethod @params | ForEach-Object { $AddResult.Add($_) }
                     }
                     catch {
                         $errors = $_
@@ -152,6 +154,19 @@ function Add-GlpiToolsItems {
             }
             Default { Write-Verbose "You didn't specified any parameter, choose from one available" }
         }
+        # OUTPUT
+        foreach ($R in @($AddResult)){
+            if ($R.message.count -ge 1) {
+                foreach ($R2 in @($R)){
+                    if ($R2 -isnot [string]) { # Never output the occasional "first string" {ERROR_GLPI_PARTIAL_RESULT}
+                        $R2
+                    }
+                }
+            } else {
+                $R # this is probably useless
+            }
+        }
+
     }
 
     end {
