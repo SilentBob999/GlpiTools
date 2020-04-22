@@ -72,7 +72,7 @@ function Update-GlpiToolsItems {
 
         [parameter(Mandatory = $false,
             ParameterSetName = "JsonPayload")]
-        [bigint]$MaxPayLoadSize = 100000
+        [int]$MaxPayLoadSize = 100000
     )
 
     begin {
