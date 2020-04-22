@@ -156,12 +156,13 @@ function Update-GlpiToolsItems {
             }
             Default { Write-Verbose "You didn't specified any parameter, choose from one available" }
         }
-
+        $count = 0
         foreach ($R in @($UpdateResult)){
+            $count += 1
             if ($R -is [string]) {
                 foreach ($id in @(($JsonPayload | ConvertFrom-Json).input.where({
                     $_.id -notin @(
-                        $UpdateResult[1].ForEach({$_.PSObject.Properties.Where({$_.TypeNameOfValue -EQ "System.Boolean"}).name})
+                        $UpdateResult[$($count)].ForEach({$_.PSObject.Properties.Where({$_.TypeNameOfValue -EQ "System.Boolean"}).name})
                         )
                     }).id) ){
                         [pscustomobject]@{
