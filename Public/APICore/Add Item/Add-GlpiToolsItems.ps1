@@ -105,6 +105,7 @@ function Add-GlpiToolsItems {
                 $bodyArray = [System.Collections.Generic.List[object]]::new()
                 $PayLoadBytes = ([System.Text.Encoding]::UTF8.GetBytes($JsonPayload))
                 if ( $PayLoadBytes.Length -gt $MaxPayLoadSize ) {
+                    #Write-Verbose "Load exceed the maximum load of $MaxPayLoadSize and will be split. Load size $($PayLoadBytes.Length)"
                     $data = ($JsonPayload | ConvertFrom-Json).input
                     $max = $(@($data).count *  $MaxPayLoadSize / $PayLoadBytes.Length)
                     $Divider = $(@($data).count / $max)
@@ -113,13 +114,16 @@ function Add-GlpiToolsItems {
                         $max2 = [math]::ceiling( [double]$max2 )
                     }
                     for ($i=0;$i -lt $(@($data).Count); $i+=($max2 + 1)){
-                        $end = [System.Math]::min($i+$max2,@($data).Count)
-                        $bodyArray.Add( ([System.Text.Encoding]::UTF8.GetBytes( $( @{input = $JsonPayload[$i..$end] }  |  ConvertTo-Json -Compress ) )) )
+                        $end = [System.Math]::min($($i+$max2),@($data).Count)
+                        $SplitPayLoad = ([System.Text.Encoding]::UTF8.GetBytes( $( @{input = $data[$i..$end] }  |  ConvertTo-Json -Compress ) ))
+                        $bodyArray.Add( $SplitPayLoad )
+                        Write-Verbose "Split element $i .. $end, payload size  $($SplitPayLoad.Length)"
                     }
                 } else {
                     $bodyArray.Add($PayLoadBytes)
                 }
                 foreach ($body in $bodyArray) {
+                    #Write-Verbose "bodyArray count : $($bodyArray.count), bodyArray Length : $($bodyArray.Length), body Length : $($body.Length)"
                     try {
                         $params = @{
                             headers = @{
@@ -131,7 +135,7 @@ function Add-GlpiToolsItems {
                             uri     = "$($PathToGlpi)/$($AddTo)/"
                             body    = $body
                         }
-                        Invoke-RestMethod @params
+                        Write-Verbose "RestMethod : Addto $AddTo, body length : $($body.Length)"
                     }
                     catch {
                         $errors = $_

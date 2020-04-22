@@ -94,18 +94,22 @@ function Update-GlpiToolsItems {
                 $UpdateResult = [System.Collections.Generic.List[object]]::new()
                 $PayLoadBytes = ([System.Text.Encoding]::UTF8.GetBytes($JsonPayload))
                 if ( $PayLoadBytes.Length -ge $MaxPayLoadSize ) {
+                    #Write-Verbose "Load exceed the maximum Load of $MaxPayLoadSize and will be split. Load size $($PayLoadBytes.Length)"
                     $data = ($JsonPayload | ConvertFrom-Json).input
                     $max = $($data.count *  $MaxPayLoadSize / $PayLoadBytes.Length)
                     $Divider = [math]::ceiling($data.count / $max)
                     $max2 = [math]::ceiling($data.count / $Divider)
-                    for ($i=0;$i -lt $(@($data).Count); $i+=($max2 + 1)){
-                        $end = [System.Math]::min($i+$max2,@($data).Count)
-                        $bodyArray.Add( ([System.Text.Encoding]::UTF8.GetBytes( $( @{input = $JsonPayload[$i..$end] }  |  ConvertTo-Json -Compress ) )) )
+                    for ($i=0;$i -lt $(@($data).Count); $i+=$($max2 + 1)){
+                        $end = [System.Math]::min($($i+$max2),@($data).Count)
+                        $SplitPayLoad = ([System.Text.Encoding]::UTF8.GetBytes( $( @{input = $data[$i..$end] }  |  ConvertTo-Json -Compress ) ))
+                        $bodyArray.Add( $SplitPayLoad )
+                        Write-Verbose "Split element $i .. $end, payload size  $($SplitPayLoad.Length)"
                     }
                 } else {
                     $bodyArray.Add($PayLoadBytes)
                 }
                 foreach ($body in $bodyArray) {
+                    #Write-Verbose "bodyArray count : $($bodyArray.count), bodyArray Length : $($bodyArray.Length), body Length : $($body.Length)"
                     try {
                         $params = @{
                             headers = @{
@@ -117,6 +121,7 @@ function Update-GlpiToolsItems {
                             uri     = "$($PathToGlpi)/$($UpdateTo)/"
                             body    = $body
                         }
+                        Write-Verbose "RestMethod : UpdateTo $UpdateTo, body length : $($body.Length)"
                         Invoke-RestMethod @params | ForEach-Object { $UpdateResult.Add($_) }
                     }
                     catch {
