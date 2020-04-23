@@ -91,7 +91,7 @@ function Update-GlpiToolsItems {
         switch ($ChoosenParam) {
             JsonPayload {
                 $bodyArray = [System.Collections.Generic.List[object]]::new()
-                $UpdateResult = [System.Collections.Generic.List[object]]::new()
+                $UpdateResult = @()
                 $PayLoadBytes = ([System.Text.Encoding]::UTF8.GetBytes($JsonPayload))
                 if ( $PayLoadBytes.Length -ge $MaxPayLoadSize ) {
                     #Write-Verbose "Load exceed the maximum Load of $MaxPayLoadSize and will be split. Load size $($PayLoadBytes.Length)"
@@ -122,7 +122,7 @@ function Update-GlpiToolsItems {
                             body    = $body
                         }
                         Write-Verbose "RestMethod : UpdateTo $UpdateTo, body length : $($body.Length)"
-                        Invoke-RestMethod @params | ForEach-Object { $UpdateResult.Add($_) }
+                        $UpdateResult += Invoke-RestMethod @params
                     }
                     catch {
                         $errors = $_
@@ -156,22 +156,8 @@ function Update-GlpiToolsItems {
             }
             Default { Write-Verbose "You didn't specified any parameter, choose from one available" }
         }
-        $count = 0
+
         foreach ($R in @($UpdateResult)){
-            $count += 1
-            if ($R -is [string]) {
-                foreach ($id in @(($JsonPayload | ConvertFrom-Json).input.where({
-                    $_.id -notin @(
-                        $UpdateResult[$($count)].ForEach({$_.PSObject.Properties.Where({$_.TypeNameOfValue -EQ "System.Boolean"}).name})
-                        )
-                    }).id) ){
-                        [pscustomobject]@{
-                            id = $id
-                            success = $false
-                            message = $R
-                        }
-                    }
-            }
             if ($R.message.count -ge 1) {
                 foreach ($R2 in @($R)){
                      [pscustomobject]@{
