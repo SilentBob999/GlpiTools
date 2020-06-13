@@ -118,9 +118,11 @@ function Get-GlpiToolsItems{
                     method  = 'get'
                     uri     = "$($PathToGlpi)/$($ItemType)/?range=$x-$($x+999)$($SearchTextString)$($IsDeletedString)$($OnlyIdString)$($ExtraParameter)"
                 }
+                $restResult = $(Invoke-RestMethod @params)
+                Write-Debug -Message "Invoke-RestMethod $($params | out-string)'n$($restResult | out-string)"
 
-                #Invoke-RestMethod @params -Verbose:$false | ForEach-Object {$GlpiObjectAll.Add($_)}
-                $GlpiObjectAll += Invoke-RestMethod @params -Verbose:$false
+                #$restResult | ForEach-Object {$GlpiObjectAll.Add($_)}
+                $GlpiObjectAll += $restResult
                 $x = $x + 1000
             }
             catch {
