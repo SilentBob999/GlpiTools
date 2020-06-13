@@ -48,6 +48,18 @@ function Set-GlpiToolsInitSession {
     }
     
     end {
+        ## BEGIN Workaround for bugus html first response ##
+        $params = @{
+            headers = @{
+                'Content-Type'  = 'application/json'
+                'App-Token'     = $AppToken
+                'Session-Token' = $SessionToken.SessionToken
+            }
+            method  = 'get'
+            uri     = "$($PathToGlpi)/getActiveProfile"
+        }
+        Invoke-RestMethod @params | out-null
+        ## END Workaround ##
         $SessionToken
     }
 }
